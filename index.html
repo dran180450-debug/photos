@@ -3,131 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Temp Hosting</title>
+    <title>FlashDrive | App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 50; }
+        body { background: #0f172a; color: #f8fafc; font-family: sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
+        .masonry-item { break-inside: avoid; margin-bottom: 1rem; }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen">
+<body>
 
-    <nav class="p-6 border-b border-white/10 flex justify-between items-center glass sticky top-0">
-        <h1 class="text-2xl font-bold tracking-tighter">⚡ FlashDrive</h1>
-        <div id="timer" class="text-orange-400 font-mono">Loading timer...</div>
+    <nav class="sticky top-0 z-50 glass px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl">⚡</span>
+            <h1 class="text-xl font-bold tracking-tight">FlashDrive</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="copyLink()" class="text-xs bg-white/10 px-3 py-1 rounded border border-white/20 hover:bg-white/20">Copy Share Link</button>
+            <div id="timer" class="text-orange-400 font-mono text-sm">Timer Loading...</div>
+        </div>
     </nav>
 
-    <main id="app-content" class="max-w-4xl mx-auto p-4">
-        <section id="upload-area" class="mb-10 p-8 border-2 border-dashed border-white/20 rounded-2xl text-center">
+    <div class="max-w-6xl mx-auto p-6">
+        <div class="mb-12 p-10 border-2 border-dashed border-white/10 rounded-3xl text-center hover:border-blue-500/50 transition-colors">
             <input type="file" id="fileInput" class="hidden" accept="image/*">
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-6 py-2 rounded-full font-bold">Upload Photo</button>
-        </section>
-
-        <div class="flex gap-4 mb-6 border-b border-white/10">
-            <button onclick="switchTab('feed')" class="pb-2 border-b-2 border-blue-500">Feed</button>
-            <button onclick="switchTab('users')" class="pb-2 text-gray-400">Contributors</button>
+            <button onclick="document.getElementById('fileInput').click()" id="uploadBtn" class="bg-blue-600 hover:bg-blue-500 px-10 py-3 rounded-2xl font-bold shadow-xl shadow-blue-600/20">
+                Upload Photo
+            </button>
+            <p id="statusMsg" class="mt-4 text-sm text-slate-500"></p>
         </div>
 
-        <div id="feed-tab" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div>
+        <div class="flex gap-8 mb-8 border-b border-white/10">
+            <button id="tab-feed-btn" onclick="switchTab('feed')" class="pb-4 border-b-2 border-blue-500 text-white">Feed</button>
+            <button id="tab-user-btn" onclick="switchTab('users')" class="pb-4 text-slate-500">Contributors</button>
+        </div>
 
-        <div id="users-tab" class="hidden space-y-4"></div>
-    </main>
+        <div id="feed-view" class="columns-1 md:columns-3 gap-4"></div>
 
-    <div id="photoModal" class="modal flex items-center justify-center p-4" onclick="closeModal()">
-        <div class="bg-slate-800 rounded-xl max-w-4xl w-full flex flex-col md:flex-row overflow-hidden" onclick="event.stopPropagation()">
-            <img id="modalImg" src="" class="w-full md:w-2/3 object-contain bg-black">
-            <div class="w-full md:w-1/3 p-4 flex flex-col">
-                <h3 class="font-bold border-b border-white/10 pb-2 mb-2">Comments</h3>
-                <div id="commentList" class="flex-grow overflow-y-auto space-y-2 text-sm mb-4"></div>
-                <input type="text" id="commentInput" placeholder="Add a reply..." class="bg-slate-700 p-2 rounded w-full">
+        <div id="users-view" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <div id="photoModal" class="modal" onclick="closeModal()">
+        <div class="glass w-full max-w-5xl rounded-3xl overflow-hidden flex flex-col md:flex-row h-[85vh]" onclick="event.stopPropagation()">
+            <div class="w-full md:w-2/3 bg-black flex items-center justify-center">
+                <img id="modalImg" src="" class="max-h-full object-contain">
+            </div>
+            <div class="w-full md:w-1/3 flex flex-col p-6 bg-slate-900">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-lg">Comments</h3>
+                    <button onclick="closeModal()" class="text-slate-500 hover:text-white">✕</button>
+                </div>
+                <div id="commentList" class="flex-grow overflow-y-auto space-y-4 mb-4 pr-2"></div>
+                <input type="text" id="commentInput" placeholder="Write a reply..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500">
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
+        // --- CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
-            databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
-            projectId: "photos-a5dfc",
+  authDomain: "photos-a5dfc.firebaseapp.com",
+  databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
+  projectId: "photos-a5dfc",
+  storageBucket: "photos-a5dfc.firebasestorage.app",
+  messagingSenderId: "964574526842",
+  appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
+  measurementId: "G-1EQJ1D9PRR"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyVU3Bn0rA5Gy_RYX51DWgNTvsScG_Mh-IJKCk2NIn2fud-E9G76O7PHkjrgiNWEam4/exec";
-        const EXPIRY_TIME = new Date("2026-02-10T00:00:00").getTime(); // Set your date
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzB-LhMsmdAMuuWXbJrLC4J_odopoEQlp5cdJlcP8Ce4HVll4BevKSXzU4HMMueOp3R/exec";
+        const EXPIRY_DATE = new Date("2026-12-31T23:59:59").getTime(); // Set your date
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const myUser = "User-" + Math.floor(Math.random() * 900 + 100);
+        let currentPhotoId = null;
 
         // --- CORE LOGIC ---
-        function checkExpiry() {
-            const now = new Date().getTime();
-            if (now > EXPIRY_TIME) {
-                document.getElementById('app-content').innerHTML = "<h2 class='text-center mt-20 text-2xl font-bold'>🔒 This album has expired.</h2>";
-                document.getElementById('timer').innerText = "EXPIRED";
-                return true;
-            }
-            return false;
+        function copyLink() {
+            navigator.clipboard.writeText(window.location.href);
+            alert("Album link copied!");
         }
 
-        // Handle Upload
+        function switchTab(t) {
+            document.getElementById('feed-view').classList.toggle('hidden', t !== 'feed');
+            document.getElementById('users-view').classList.toggle('hidden', t !== 'users');
+            document.getElementById('tab-feed-btn').className = t === 'feed' ? 'pb-4 border-b-2 border-blue-500 text-white' : 'pb-4 text-slate-500';
+            document.getElementById('tab-user-btn').className = t === 'users' ? 'pb-4 border-b-2 border-blue-500 text-white' : 'pb-4 text-slate-500';
+        }
+
+        // Timer
+        setInterval(() => {
+            const diff = EXPIRY_DATE - Date.now();
+            if (diff <= 0) { document.body.innerHTML = "<h1 class='text-center mt-20 text-xl font-bold'>Album Deactivated</h1>"; return; }
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            document.getElementById('timer').innerText = `EXPIRES IN: ${h}h ${m}m`;
+        }, 1000);
+
+        // Upload
         document.getElementById('fileInput').onchange = async (e) => {
-            if (checkExpiry()) return;
             const file = e.target.files[0];
+            const btn = document.getElementById('uploadBtn');
+            const status = document.getElementById('statusMsg');
+            
+            btn.innerText = "Syncing to Drive...";
+            btn.disabled = true;
+
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
-                const base64 = reader.result.split(',')[1];
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        base64: base64,
-                        mimeType: file.type,
-                        fileName: file.name
-                    })
-                });
-                const result = await response.json();
-                if(result.status === 'success') {
-                    db.ref('photos').push({
-                        url: result.url,
-                        user: "User-" + Math.floor(Math.random() * 100),
-                        timestamp: Date.now()
+                try {
+                    const base64 = reader.result.split(',')[1];
+                    const res = await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ base64: base64, mimeType: file.type, fileName: file.name })
                     });
-                }
+                    const data = await res.json();
+                    if(data.status === 'success') {
+                        db.ref('photos').push({ url: data.url, user: myUser, ts: Date.now() });
+                        db.ref('stats/'+myUser+'/photos').transaction(c => (c||0)+1);
+                        btn.innerText = "Upload Photo";
+                        btn.disabled = false;
+                    }
+                } catch (err) { alert("Upload failed. Check GAS URL and Drive permissions."); }
             };
         };
 
-        // UI Listeners, Tab Switching, and Modal functions go here...
-        function switchTab(tab) {
-            document.getElementById('feed-tab').classList.toggle('hidden', tab !== 'feed');
-            document.getElementById('users-tab').classList.toggle('hidden', tab !== 'users');
+        // Real-time Feed
+        db.ref('photos').on('value', snap => {
+            const view = document.getElementById('feed-view');
+            view.innerHTML = "";
+            snap.forEach(child => {
+                const p = child.val();
+                view.innerHTML += `
+                    <div class="masonry-item glass rounded-2xl overflow-hidden cursor-pointer group" onclick="openPhoto('${p.url}', '${child.key}')">
+                        <img src="${p.url}" class="w-full group-hover:scale-105 transition-transform duration-500">
+                        <div class="p-3 text-[10px] text-slate-500 uppercase font-bold tracking-widest">Uploaded by ${p.user}</div>
+                    </div>`;
+            });
+        });
+
+        function openPhoto(url, id) {
+            currentPhotoId = id;
+            document.getElementById('modalImg').src = url;
+            document.getElementById('photoModal').style.display = 'flex';
+            
+            db.ref('comments/' + id).on('value', snap => {
+                const list = document.getElementById('commentList');
+                list.innerHTML = "";
+                snap.forEach(child => {
+                    const c = child.val();
+                    list.innerHTML += `<div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                        <div class="text-blue-400 text-xs font-bold">${c.user}</div>
+                        <div class="text-sm mt-1">${c.text}</div>
+                        <button onclick="replyTo('${c.user}')" class="text-[9px] text-slate-500 mt-2">REPLY</button>
+                    </div>`;
+                });
+            });
         }
+
+        function replyTo(name) {
+            const input = document.getElementById('commentInput');
+            input.value = `@${name} `;
+            input.focus();
+        }
+
+        document.getElementById('commentInput').onkeypress = (e) => {
+            if(e.key === 'Enter' && e.target.value.trim() !== "") {
+                db.ref('comments/' + currentPhotoId).push({ user: myUser, text: e.target.value });
+                db.ref('stats/'+myUser+'/comments').transaction(c => (c||0)+1);
+                e.target.value = "";
+            }
+        };
 
         function closeModal() { document.getElementById('photoModal').style.display = 'none'; }
 
-        // Start timer update
-        setInterval(() => {
-            const now = new Date().getTime();
-            const diff = EXPIRY_TIME - now;
-            if (diff <= 0) { checkExpiry(); return; }
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            document.getElementById('timer').innerText = `Expires in: ${hours}h ${mins}m`;
-        }, 1000);
-
-        // Sync Feed
-        db.ref('photos').on('value', snap => {
-            const feed = document.getElementById('feed-tab');
-            feed.innerHTML = "";
+        // User Stats
+        db.ref('stats').on('value', snap => {
+            const view = document.getElementById('users-view');
+            view.innerHTML = "";
             snap.forEach(child => {
-                const data = child.val();
-                feed.innerHTML += `
-                    <div class="cursor-pointer overflow-hidden rounded-lg bg-slate-800" onclick="openPhoto('${data.url}', '${child.key}')">
-                        <img src="${data.url}" class="h-40 w-full object-cover">
-                        <div class="p-2 text-xs text-gray-400">Uploaded by ${data.user}</div>
+                const s = child.val();
+                view.innerHTML += `<div class="glass p-6 rounded-2xl flex justify-between items-center">
+                    <div><h4 class="font-bold text-white">${child.key}</h4></div>
+                    <div class="flex gap-4 text-center">
+                        <div><p class="text-blue-400 font-bold">${s.photos||0}</p><p class="text-[9px] uppercase">Photos</p></div>
+                        <div><p class="text-green-400 font-bold">${s.comments||0}</p><p class="text-[9px] uppercase">Comments</p></div>
                     </div>
-                `;
+                </div>`;
             });
         });
     </script>
