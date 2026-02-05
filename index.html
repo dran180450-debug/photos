@@ -3,188 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Multi-Album</title>
+    <title>FlashDrive | App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background: #0f172a; color: #f1f5f9; }
+        body { background: #0f172a; color: #f8fafc; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
-        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 100; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <div id="setup-screen" class="hidden flex flex-col items-center justify-center min-h-screen p-6">
-        <div class="glass p-10 rounded-3xl text-center max-w-md w-full">
-            <h1 class="text-4xl font-black mb-4">⚡ FlashDrive</h1>
-            <p class="text-slate-400 mb-8">Create your own temporary album. Link expires, photos stay in your Drive.</p>
-            <button id="createBtn" onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-bold text-xl transition-all shadow-lg shadow-blue-600/20">
-                Create New Album
-            </button>
+    <div id="setup-screen" class="hidden h-screen flex items-center justify-center p-6">
+        <div class="glass p-10 rounded-3xl text-center max-w-sm w-full">
+            <h1 class="text-3xl font-bold mb-6">⚡ FlashDrive</h1>
+            <button onclick="createNewAlbum()" class="w-full bg-blue-600 py-4 rounded-xl font-bold hover:bg-blue-500">Create Album</button>
         </div>
     </div>
 
-    <div id="app-screen" class="hidden">
+    <div id="app-screen" class="hidden min-h-screen">
         <nav class="sticky top-0 z-50 glass px-6 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-2"><span class="text-xl">⚡</span> <span class="font-bold">FlashDrive</span></div>
-            <div class="flex items-center gap-4">
-                <button onclick="copyLink()" class="bg-white/10 px-3 py-1 rounded text-xs border border-white/10 hover:bg-white/20 transition-colors">Share Link</button>
-                <div id="timer" class="text-orange-400 font-mono text-sm"></div>
-            </div>
+            <h1 class="font-bold">⚡ FlashDrive</h1>
+            <div id="timer" class="text-orange-400 text-sm font-mono"></div>
         </nav>
 
-        <main class="max-w-6xl mx-auto p-6">
-            <div class="mb-10 p-10 border-2 border-dashed border-white/10 rounded-3xl text-center group hover:border-blue-500/50 transition-colors">
+        <main class="max-w-5xl mx-auto p-6">
+            <div class="mb-8 p-12 border-2 border-dashed border-white/10 rounded-3xl text-center">
                 <input type="file" id="fileInput" class="hidden" accept="image/*">
-                <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-10 py-3 rounded-2xl font-bold">Upload to Album</button>
-                <div id="uploadStatus" class="mt-4 hidden flex items-center justify-center gap-2 text-sm text-slate-400">
-                    <div class="spinner"></div> Sending to Google Drive...
-                </div>
+                <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-8 py-3 rounded-xl font-bold">Upload to Album</button>
+                <p id="upStatus" class="mt-4 text-blue-400 hidden italic">Sending to Google Drive...</p>
             </div>
 
-            <div class="flex gap-8 mb-8 border-b border-white/10 font-medium">
-                <button id="btn-feed" onclick="setTab('feed')" class="pb-4 border-b-2 border-blue-500 text-white">Activity Feed</button>
-                <button id="btn-user" onclick="setTab('users')" class="pb-4 text-slate-500">Contributors</button>
+            <div class="flex gap-6 mb-8 border-b border-white/10">
+                <button id="tab-f" onclick="setTab('f')" class="pb-4 border-b-2 border-blue-500">Feed</button>
+                <button id="tab-u" onclick="setTab('u')" class="pb-4 text-slate-500">Users</button>
             </div>
 
-            <div id="view-feed" class="columns-1 md:columns-3 gap-4"></div>
-            <div id="view-users" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            <div id="view-feed" class="columns-2 md:columns-3 gap-4"></div>
+            <div id="view-users" class="hidden space-y-2"></div>
         </main>
     </div>
 
-    <div id="photoModal" class="modal" onclick="closeModal()">
-        <div class="glass w-full max-w-5xl rounded-3xl overflow-hidden flex flex-col md:flex-row h-[85vh]" onclick="event.stopPropagation()">
-            <div class="w-full md:w-2/3 bg-black flex items-center justify-center">
-                <img id="modalImg" src="" class="max-h-full object-contain">
-            </div>
-            <div class="w-full md:w-1/3 flex flex-col p-6 bg-slate-900/50">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-lg">Comments</h3>
-                    <button onclick="closeModal()" class="text-slate-500 hover:text-white">✕</button>
-                </div>
-                <div id="commentList" class="flex-grow overflow-y-auto space-y-4 mb-4 pr-2"></div>
-                <input type="text" id="commentInput" placeholder="Write a reply..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-blue-500">
+    <div id="photoModal" class="modal" onclick="this.style.display='none'">
+        <div class="glass w-full max-w-4xl h-[80vh] flex flex-col md:flex-row rounded-2xl overflow-hidden" onclick="event.stopPropagation()">
+            <img id="modalImg" class="w-full md:w-2/3 object-contain bg-black">
+            <div class="w-full md:w-1/3 p-6 flex flex-col">
+                <h3 class="font-bold mb-4">Comments</h3>
+                <div id="commentList" class="flex-grow overflow-auto mb-4 space-y-3 text-sm"></div>
+                <input type="text" id="commentInput" placeholder="Add comment..." class="w-full bg-white/10 p-3 rounded-lg outline-none border border-white/10 focus:border-blue-500">
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. CONFIG ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
+        const firebaseConfig = { apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
   authDomain: "photos-a5dfc.firebaseapp.com",
   databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
   projectId: "photos-a5dfc",
   storageBucket: "photos-a5dfc.firebasestorage.app",
   messagingSenderId: "964574526842",
   appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
-  measurementId: "G-1EQJ1D9PRR"
-        };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyivY0S86oGQW1vKBcTXbgis-rG6-IJqcB-V_qiePf-Ks8B0gf_O6PeA0EVozDnk9oO/exec";
-
+  measurementId: "G-1EQJ1D9PRR" };
+        const GAS_URL = "https://script.google.com/macros/s/AKfycby3f5CGOZpkosidccTVs7PLUIJ06oMSGas9ihg4r3e_91bvzy7pQUJuFfgmkeKnEf13/exec";
+        
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
-        const myUser = "User-" + Math.floor(Math.random() * 899 + 100);
+        const myUser = "User-" + Math.floor(Math.random() * 900 + 100);
         let currentPhotoId = null;
 
-        // --- 2. INITIALIZATION ---
         if (!albumId) {
             document.getElementById('setup-screen').classList.remove('hidden');
         } else {
             document.getElementById('app-screen').classList.remove('hidden');
-            checkAndInitAlbum();
+            init();
         }
 
         async function createNewAlbum() {
-            const btn = document.getElementById('createBtn');
-            btn.disabled = true;
-            btn.innerText = "Creating...";
-
-            const newId = 'album-' + Math.random().toString(36).substr(2, 9);
-            const expiry = Date.now() + (48 * 60 * 60 * 1000); // 48 Hours
-
-            // Save to Firebase FIRST
-            await db.ref('albums/' + newId).set({
-                created: Date.now(),
-                expiry: expiry
-            });
-
-            // Redirect AFTER save is confirmed
-            window.location.search = '?id=' + newId;
+            const id = 'alb-' + Math.random().toString(36).substr(2, 7);
+            const expiry = Date.now() + (24 * 60 * 60 * 1000);
+            await db.ref('albums/' + id).set({ expiry });
+            window.location.search = '?id=' + id;
         }
 
-        function checkAndInitAlbum() {
+        function init() {
             db.ref('albums/' + albumId).on('value', snap => {
-                if (!snap.exists()) {
-                    alert("Album not found in database.");
-                    window.location.search = "";
-                    return;
-                }
-                startTimer(snap.val().expiry);
+                if(!snap.exists()) return;
+                const expiry = snap.val().expiry;
+                setInterval(() => {
+                    const diff = expiry - Date.now();
+                    if(diff <= 0) { document.body.innerHTML = "<h1>Expired</h1>"; return; }
+                    const h = Math.floor(diff/3600000);
+                    const m = Math.floor((diff%3600000)/60000);
+                    document.getElementById('timer').innerText = `${h}h ${m}m remaining`;
+                }, 1000);
             });
 
-            // Sync Feed
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
                 snap.forEach(child => {
                     const p = child.val();
-                    view.innerHTML += `
-                        <div class="glass rounded-2xl overflow-hidden cursor-pointer mb-4 group" onclick="openPhoto('${p.url}', '${child.key}')">
-                            <img src="${p.url}" class="w-full group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/400x300?text=Processing...'">
-                            <div class="p-3 text-[10px] text-slate-500 font-bold uppercase">Uploaded by ${p.user}</div>
-                        </div>`;
-                });
-            });
-
-            // Sync Stats
-            db.ref('stats/' + albumId).on('value', snap => {
-                const view = document.getElementById('view-users');
-                view.innerHTML = "";
-                snap.forEach(child => {
-                    const s = child.val();
-                    view.innerHTML += `<div class="glass p-6 rounded-2xl flex justify-between items-center">
-                        <span class="font-bold">${child.key}</span>
-                        <div class="flex gap-4 text-xs font-mono">
-                            <span class="text-blue-400">${s.photos||0} PH</span>
-                            <span class="text-green-400">${s.comments||0} CM</span>
-                        </div>
+                    view.innerHTML += `<div class="glass rounded-xl overflow-hidden mb-4 cursor-pointer" onclick="openPhoto('${p.url}', '${child.key}')">
+                        <img src="${p.url}" class="w-full">
+                        <p class="p-2 text-[10px] uppercase font-bold text-slate-500">By ${p.user}</p>
                     </div>`;
                 });
             });
         }
 
-        // --- 3. ACTIONS ---
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
-            const status = document.getElementById('uploadStatus');
-            const btn = document.getElementById('uploadBtn');
-            
-            status.classList.remove('hidden');
-            btn.classList.add('hidden');
-
             const reader = new FileReader();
+            document.getElementById('upStatus').classList.remove('hidden');
+            document.getElementById('uploadBtn').classList.add('hidden');
+
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
                 try {
-                    const res = await fetch(GAS_URL, {
+                    await fetch(GAS_URL, {
                         method: 'POST',
-                        body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId })
+                        mode: 'no-cors',
+                        body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myUser })
                     });
-                    const data = await res.json();
-                    if(data.status === 'success') {
-                        db.ref('photos/' + albumId).push({ url: data.url, user: myUser });
-                        db.ref('stats/' + albumId + '/' + myUser + '/photos').transaction(c => (c||0)+1);
-                    }
-                } catch(e) { alert("Upload error. Check GAS permissions."); }
-                status.classList.add('hidden');
-                btn.classList.remove('hidden');
+                    // Refresh after 5 seconds
+                    setTimeout(() => location.reload(), 5000);
+                } catch(err) { alert("Error: " + err); }
             };
         };
 
@@ -192,48 +139,29 @@
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').style.display = 'flex';
-            db.ref('comments/' + albumId + '/' + id).on('value', snap => {
+            db.ref('comments/'+albumId+'/'+id).on('value', snap => {
                 const list = document.getElementById('commentList');
                 list.innerHTML = "";
-                snap.forEach(child => {
-                    const c = child.val();
-                    list.innerHTML += `<div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                        <div class="text-blue-400 font-bold text-[10px] mb-1">${c.user}</div>
-                        <div class="text-sm">${c.text}</div>
-                        <button onclick="replyTo('${c.user}')" class="text-[9px] text-slate-500 mt-2 hover:text-white">REPLY</button>
+                snap.forEach(c => {
+                    const val = c.val();
+                    list.innerHTML += `<div class="bg-white/5 p-2 rounded">
+                        <b class="text-blue-400 text-xs">${val.user}</b><br>${val.text}
                     </div>`;
                 });
             });
         }
 
         document.getElementById('commentInput').onkeypress = (e) => {
-            if(e.key === 'Enter' && e.target.value.trim() !== "") {
-                db.ref('comments/' + albumId + '/' + currentPhotoId).push({ user: myUser, text: e.target.value });
-                db.ref('stats/' + albumId + '/' + myUser + '/comments').transaction(c => (c||0)+1);
+            if(e.key === 'Enter') {
+                db.ref('comments/'+albumId+'/'+currentPhotoId).push({ user: myUser, text: e.target.value });
                 e.target.value = "";
             }
         };
 
-        function startTimer(expiry) {
-            setInterval(() => {
-                const diff = expiry - Date.now();
-                if (diff <= 0) { document.body.innerHTML = "<div class='flex items-center justify-center h-screen'><h1 class='text-2xl font-bold'>Album Deactivated</h1></div>"; return; }
-                const h = Math.floor(diff / 3600000);
-                const m = Math.floor((diff % 3600000) / 60000);
-                document.getElementById('timer').innerText = `EXPIRES IN: ${h}h ${m}m`;
-            }, 1000);
-        }
-
         function setTab(t) {
-            document.getElementById('view-feed').classList.toggle('hidden', t !== 'feed');
-            document.getElementById('view-users').classList.toggle('hidden', t !== 'users');
-            document.getElementById('btn-feed').className = t === 'feed' ? 'pb-4 border-b-2 border-blue-500 text-white' : 'pb-4 text-slate-500';
-            document.getElementById('btn-user').className = t === 'users' ? 'pb-4 border-b-2 border-blue-500 text-white' : 'pb-4 text-slate-500';
+            document.getElementById('view-feed').classList.toggle('hidden', t !== 'f');
+            document.getElementById('view-users').classList.toggle('hidden', t !== 'u');
         }
-
-        function closeModal() { document.getElementById('photoModal').style.display = 'none'; }
-        function copyLink() { navigator.clipboard.writeText(window.location.href); alert("Share link copied!"); }
-        function replyTo(u) { const i = document.getElementById('commentInput'); i.value = `@${u} `; i.focus(); }
     </script>
 </body>
 </html>
