@@ -11,73 +11,86 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: #020617; color: white; overflow: hidden; height: 100vh; font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+        .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; opacity: 1 !important; }
         
-        /* THE GRID FIX */
+        /* FIXED GRID: Prevents stacking */
         #view-feed { 
             display: grid; 
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
-            gap: 12px;
-            padding-bottom: 100px;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 1.5rem; 
+            align-content: start;
         }
         
-        .photo-card { aspect-ratio: 1/1; border-radius: 1rem; overflow: hidden; position: relative; cursor: zoom-in; border: 1px solid rgba(255,255,255,0.05); }
-        .photo-card img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .photo-card:hover img { transform: scale(1.05); }
+        .photo-card { 
+            aspect-ratio: 1/1; 
+            position: relative; 
+            border-radius: 1.5rem; 
+            overflow: hidden; 
+            cursor: zoom-in;
+            background: #0f172a;
+        }
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; }
         
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+
+        @keyframes pulse-heart { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .heart-btn:active { animation: pulse-heart 0.3s ease-in-out; }
     </style>
 </head>
-<body class="flex flex-col md:flex-row">
+<body class="flex flex-col md:flex-row h-screen">
 
     <div id="masterListOverlay" class="hidden fixed inset-0 z-[500] bg-slate-950/98 backdrop-blur-xl p-6 md:p-20 overflow-y-auto custom-scrollbar">
         <div class="max-w-4xl mx-auto">
-            <h2 class="text-4xl font-black italic text-blue-500 uppercase italic mb-8">Master Folders</h2>
-            <div class="glass rounded-3xl overflow-hidden">
-                <table class="w-full text-left">
-                    <tbody id="masterTableBody"></tbody>
-                </table>
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-4xl font-black italic text-blue-500 uppercase italic">Admin Master List</h2>
+                <button onclick="document.getElementById('masterListOverlay').classList.add('hidden')" class="bg-white/10 px-6 py-2 rounded-xl text-xs font-bold uppercase">Close</button>
             </div>
-            <button onclick="document.getElementById('masterListOverlay').classList.add('hidden')" class="mt-8 bg-white/10 px-8 py-3 rounded-xl font-bold uppercase text-xs">Close</button>
+            <div class="glass rounded-3xl overflow-hidden"><table class="w-full text-left"><tbody id="masterTableBody"></tbody></table></div>
         </div>
     </div>
 
-    <div id="photoPopup" class="hidden fixed inset-0 z-[600] bg-black/95 flex items-center justify-center p-4" onclick="this.classList.add('hidden')">
-        <img id="popupImg" src="" class="max-h-full max-w-full rounded-lg shadow-2xl">
+    <div id="photoPopup" class="hidden fixed inset-0 z-[600] bg-black/95 flex flex-col items-center justify-center p-4">
+        <button onclick="document.getElementById('photoPopup').classList.add('hidden')" class="absolute top-10 right-10 text-white text-4xl">&times;</button>
+        <img id="popupImg" src="" class="max-h-[70vh] rounded-2xl shadow-2xl mb-6">
+        <div class="flex gap-6 items-center">
+            <button onclick="addHeart()" class="heart-btn text-3xl">❤️ <span id="popup-heart-count" class="text-sm font-bold">0</span></button>
+        </div>
     </div>
 
-    <main class="flex-1 h-screen flex flex-col p-6 md:p-12">
-        <header class="flex justify-between items-center mb-10">
+    <main class="flex-1 h-full overflow-y-auto p-6 md:p-12 custom-scrollbar">
+        <header class="flex justify-between items-center mb-12">
             <div>
-                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
-                <div class="flex items-center gap-3 mt-1">
-                    <span id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">No Album</span>
-                    <button onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-white uppercase font-bold">🔒 Admin</button>
+                <h1 class="text-5xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
+                <div class="flex gap-4 mt-2">
+                    <span id="album-tag" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">No Album Selected</span>
+                    <button onclick="adminLogin()" class="text-[10px] text-slate-700 hover:text-white font-bold uppercase underline">Admin Access</button>
                 </div>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase">Upload</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-500/20 transition-all">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
 
-        <div id="view-feed" class="flex-1 overflow-y-auto custom-scrollbar"></div>
+        <div id="view-feed"></div>
     </main>
 
-    <aside class="w-full md:w-[400px] h-screen glass border-l border-white/5 flex flex-col">
-        <div class="flex border-b border-white/5">
-            <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
-            <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
+    <aside class="w-full md:w-[400px] h-full glass border-l border-white/5 flex flex-col">
+        <div class="flex border-b border-white/5 bg-white/[0.01]">
+            <button onclick="switchTab('chat')" id="tab-chat-btn" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
+            <button onclick="switchTab('users')" id="tab-users-btn" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500 opacity-50">Online (<span id="online-count">0</span>)</button>
         </div>
-        
-        <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
+
+        <div id="content-chat" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
-            <div class="p-4 flex gap-2">
-                <input id="chatInput" type="text" placeholder="Message..." class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
-                <button onclick="sendGlobalChat()" class="bg-blue-600 px-4 rounded-xl">🚀</button>
+            <div class="p-6 bg-slate-900/50 flex gap-3">
+                <input id="chatInput" type="text" placeholder="Send a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none focus:border-blue-500/50">
+                <button onclick="sendGlobalChat()" class="bg-blue-600 px-6 rounded-2xl font-bold">🚀</button>
             </div>
         </div>
 
-        <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
+        <div id="content-users" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
+            <h3 class="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-widest">Connected Users</h3>
             <div id="user-list" class="space-y-2"></div>
         </div>
     </aside>
@@ -89,22 +102,103 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby9dbdWyztPww5ejaoFpepJiiiKmdiV59UtBvn3o9oh6Bp8wwdKoG7XliFtmr29AsAJ/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
         const MASTER_PASS = "admin1988";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
-        let myName = "User-" + Math.floor(Math.random() * 99);
+        let myName = "Guest-" + Math.floor(Math.random() * 999);
+        let currentPhotoId = null;
 
         if (albumId) {
-            document.getElementById('album-id-tag').innerText = albumId;
+            document.getElementById('album-tag').innerText = "Album ID: " + albumId;
             initGallery();
             initPresence();
             initGlobalChat();
         }
 
+        // --- Tab Switching ---
+        function switchTab(tab) {
+            const chatBox = document.getElementById('content-chat');
+            const userBox = document.getElementById('content-users');
+            const chatBtn = document.getElementById('tab-chat-btn');
+            const userBtn = document.getElementById('tab-users-btn');
+
+            if (tab === 'chat') {
+                chatBox.classList.remove('hidden'); userBox.classList.add('hidden');
+                chatBtn.classList.add('tab-active'); userBtn.classList.remove('tab-active');
+            } else {
+                chatBox.classList.add('hidden'); userBox.classList.remove('hidden');
+                chatBtn.classList.remove('tab-active'); userBtn.classList.add('tab-active');
+            }
+        }
+
+        // --- Gallery ---
+        function initGallery() {
+            db.ref('photos/' + albumId).on('value', snap => {
+                const view = document.getElementById('view-feed');
+                view.innerHTML = "";
+                snap.forEach(child => {
+                    const data = child.val();
+                    const card = document.createElement('div');
+                    card.className = "photo-card glass group animate-in zoom-in duration-300";
+                    card.onclick = () => openLightbox(child.key, data.url, data.hearts || 0);
+                    card.innerHTML = `<img src="${data.url}" class="group-hover:scale-105 transition-transform duration-500">`;
+                    view.prepend(card);
+                });
+            });
+        }
+
+        function openLightbox(id, url, hearts) {
+            currentPhotoId = id;
+            document.getElementById('popupImg').src = url;
+            document.getElementById('popup-heart-count').innerText = hearts;
+            document.getElementById('photoPopup').classList.remove('hidden');
+        }
+
+        function addHeart() {
+            if (!currentPhotoId) return;
+            const ref = db.ref(`photos/${albumId}/${currentPhotoId}/hearts`);
+            ref.transaction(current => (current || 0) + 1);
+            // Instant UI update for the popup
+            const count = document.getElementById('popup-heart-count');
+            count.innerText = parseInt(count.innerText) + 1;
+        }
+
+        // --- Presence & Live Stream ---
+        function initPresence() {
+            const ref = db.ref(`presence/${albumId}/${myName}`);
+            ref.set({ name: myName }).onDisconnect().remove();
+            db.ref(`presence/${albumId}`).on('value', snap => {
+                document.getElementById('online-count').innerText = snap.numChildren() || 0;
+                const list = document.getElementById('user-list'); list.innerHTML = "";
+                snap.forEach(u => {
+                    list.innerHTML += `<div class="p-4 glass rounded-2xl text-[10px] font-bold uppercase tracking-widest border border-white/5">● ${u.val().name}</div>`;
+                });
+            });
+        }
+
+        function initGlobalChat() {
+            db.ref(`comments/${albumId}/global`).limitToLast(50).on('value', snap => {
+                const box = document.getElementById('global-chat'); box.innerHTML = "";
+                snap.forEach(c => {
+                    const d = c.val();
+                    box.innerHTML += `<div class="glass p-4 rounded-2xl text-xs"><b class="text-blue-500 block text-[9px] uppercase tracking-widest mb-1">${d.user}</b>${d.text}</div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+            });
+        }
+
+        function sendGlobalChat() {
+            const input = document.getElementById('chatInput');
+            if (!input.value.trim()) return;
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: input.value });
+            input.value = "";
+        }
+
+        // --- Admin Master List ---
         function adminLogin() {
             if(prompt("Password:") === MASTER_PASS) {
                 document.getElementById('masterListOverlay').classList.remove('hidden');
@@ -114,85 +208,29 @@
 
         async function fetchMasterFolders() {
             const tbody = document.getElementById('masterTableBody');
-            tbody.innerHTML = `<div class="p-10 text-center text-xs animate-pulse font-bold">LOADING DRIVE...</div>`;
-            try {
-                const res = await fetch(GAS_URL);
-                const folders = await res.json();
-                tbody.innerHTML = "";
-                folders.forEach(f => {
-                    tbody.innerHTML += `
-                        <tr class="border-b border-white/5">
-                            <td class="p-6 font-bold uppercase italic">${f.name}</td>
-                            <td class="p-6 text-right">
-                                <button onclick="window.location.search='?id=${f.name}'" class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase">Open</button>
-                            </td>
-                        </tr>`;
-                });
-            } catch(e) { console.log(e); }
-        }
-
-        function initGallery() {
-            db.ref('photos/' + albumId).on('value', snap => {
-                const view = document.getElementById('view-feed');
-                view.innerHTML = "";
-                snap.forEach(child => {
-                    const data = child.val();
-                    const card = document.createElement('div');
-                    card.className = "photo-card";
-                    card.onclick = () => {
-                        document.getElementById('popupImg').src = data.url;
-                        document.getElementById('photoPopup').classList.remove('hidden');
-                    };
-                    card.innerHTML = `<img src="${data.url}">`;
-                    view.prepend(card);
-                });
+            tbody.innerHTML = `<div class="p-10 text-center animate-pulse">Accessing Cloud Drive...</div>`;
+            const res = await fetch(GAS_URL);
+            const folders = await res.json();
+            tbody.innerHTML = "";
+            folders.forEach(f => {
+                tbody.innerHTML += `<tr class="border-b border-white/5"><td class="p-6 font-bold uppercase italic">${f.name}</td><td class="p-6 text-right"><button onclick="window.location.search='?id=${f.name}'" class="bg-blue-600 px-4 py-2 rounded-lg text-xs font-bold uppercase">Open</button></td></tr>`;
             });
         }
 
-        function initPresence() {
-            const ref = db.ref(`presence/${albumId}/${myName}`);
-            ref.set({ name: myName }).onDisconnect().remove();
-            db.ref(`presence/${albumId}`).on('value', snap => {
-                document.getElementById('online-count').innerText = snap.numChildren() || 0;
-                const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => { list.innerHTML += `<div class="p-3 glass rounded-lg text-[10px] font-bold">● ${u.val().name}</div>`; });
-            });
-        }
-
-        function initGlobalChat() {
-            db.ref(`comments/${albumId}/global`).limitToLast(30).on('value', snap => {
-                const box = document.getElementById('global-chat'); box.innerHTML = "";
-                snap.forEach(c => {
-                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs"><b class="text-blue-400 block text-[9px] uppercase">${c.val().user}</b>${c.val().text}</div>`;
-                });
-                box.scrollTop = box.scrollHeight;
-            });
-        }
-
-        function sendGlobalChat() {
-            const input = document.getElementById('chatInput');
-            if(!input.value.trim()) return;
-            db.ref(`comments/${albumId}/global`).push({ user: myName, text: input.value });
-            input.value = "";
-        }
-
+        // --- Upload ---
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0]; if(!file || !albumId) return;
+            document.getElementById('uploadToast').classList.remove('hidden');
             const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
                 await fetch(GAS_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors',
+                    method: 'POST', mode: 'no-cors',
                     body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) 
                 });
+                document.getElementById('uploadToast').classList.add('hidden');
             };
         };
-
-        function switchTab(t) {
-            document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
-            document.getElementById('tab-users-content').classList.toggle('hidden', t === 'chat');
-        }
     </script>
 </body>
 </html>
