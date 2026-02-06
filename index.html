@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Super Admin 2026</title>
+    <title>FlashDrive | Master Admin 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -12,20 +12,15 @@
         body { background: #020617; color: white; overflow: hidden; height: 100vh; font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
-        
         #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; }
         @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(3, 1fr); } }
-        
         .photo-card { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; border-radius: 1.5rem; }
         .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        
         .zoom-container { cursor: zoom-in; transition: transform 0.3s ease; }
         .is-zoomed { cursor: zoom-out; transform: scale(2.5); z-index: 100; }
-        
         .nav-btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
     </style>
@@ -38,7 +33,32 @@
     <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
         <div class="max-w-md w-full text-center">
             <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡FlashDrive</h1>
-            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all">CREATE NEW ALBUM</button>
+            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all uppercase">Create New Album</button>
+        </div>
+    </div>
+
+    <div id="masterListOverlay" class="hidden fixed inset-0 z-[300] bg-slate-950/98 backdrop-blur-xl p-6 md:p-20 overflow-y-auto custom-scrollbar">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-end mb-10 border-b border-white/10 pb-6">
+                <div>
+                    <h2 class="text-4xl font-black italic text-red-500 uppercase tracking-tighter">Master Control</h2>
+                    <p class="text-slate-500 text-xs font-bold uppercase mt-1">Live Database Overview</p>
+                </div>
+                <button onclick="toggleMasterList()" class="bg-white/10 hover:bg-white/20 px-8 py-3 rounded-xl font-bold transition-all uppercase text-xs">Close Panel</button>
+            </div>
+            <div class="glass rounded-[2rem] overflow-hidden border border-white/10">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-white/5 text-[10px] uppercase font-black tracking-widest text-slate-400">
+                        <tr>
+                            <th class="p-6">Album ID</th>
+                            <th class="p-6 text-center">Photos</th>
+                            <th class="p-6 text-center">Live Users</th>
+                            <th class="p-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="masterTableBody" class="text-sm"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -64,7 +84,6 @@
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Activity Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
-        
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"></div>
             <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
@@ -72,11 +91,9 @@
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl">🚀</button>
             </div>
         </div>
-
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
             <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest">Active Users</h3>
             <div id="user-list" class="space-y-2 mb-10"></div>
-            
             <div id="admin-links-section" class="hidden">
                 <h3 class="text-[10px] font-black text-red-500 uppercase mb-4 tracking-widest">Admin Photo Registry</h3>
                 <div id="admin-url-list" class="space-y-2"></div>
@@ -87,15 +104,12 @@
     <div id="photoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-2 md:p-8 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-6xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
             <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-slate-400 hover:text-white text-4xl">&times;</button>
-            
             <div class="flex-[3] bg-black/40 flex flex-col relative overflow-hidden">
                 <button onclick="changePhoto(-1)" class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full z-10 flex items-center justify-center text-xl">❮</button>
                 <button onclick="changePhoto(1)" class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full z-10 flex items-center justify-center text-xl">❯</button>
-                
                 <div id="modalImgContainer" class="flex-1 flex items-center justify-center p-4 overflow-hidden">
                     <img id="modalImg" src="" onclick="toggleZoom(this)" class="zoom-container max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-200">
                 </div>
-
                 <div class="p-4 flex gap-4 justify-center items-center bg-gradient-to-t from-black/80 to-transparent">
                     <button onclick="sendReaction('❤️')" class="text-2xl hover:scale-125 transition-transform">❤️</button>
                     <button onclick="sendReaction('🔥')" class="text-2xl hover:scale-125 transition-transform">🔥</button>
@@ -104,7 +118,6 @@
                     <button id="modalDeleteBtn" onclick="deletePhoto(currentPhotoId)" class="admin-only hidden bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black transition-all ml-4 uppercase">Delete Photo</button>
                 </div>
             </div>
-
             <div class="flex-1 flex flex-col border-l border-white/5 p-6 min-w-[300px] bg-slate-900/50">
                 <h3 class="font-black text-[10px] tracking-widest text-blue-500 uppercase mb-4">Comments</h3>
                 <div id="photoComments" class="flex-1 overflow-y-auto space-y-4 text-xs custom-scrollbar"></div>
@@ -163,22 +176,88 @@
                 isAdmin = true;
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
                 document.getElementById('admin-links-section').classList.remove('hidden');
+                
+                if(!document.getElementById('masterBtn')){
+                    const btn = document.createElement('button');
+                    btn.id = "masterBtn";
+                    btn.className = "text-[10px] text-red-500 font-black hover:scale-110 transition-all ml-4 uppercase tracking-widest";
+                    btn.innerText = "📊 Master List";
+                    btn.onclick = toggleMasterList;
+                    document.getElementById('adminLoginBtn').after(btn);
+                }
+
                 document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN ACTIVE";
                 document.getElementById('adminLoginBtn').classList.add('text-green-500');
-                initGallery(); // Refresh for buttons
+                initGallery();
             } else {
                 alert("Incorrect password.");
             }
         }
 
+        async function toggleMasterList() {
+            const panel = document.getElementById('masterListOverlay');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                const tbody = document.getElementById('masterTableBody');
+                tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center opacity-50 animate-pulse uppercase text-xs font-bold">Syncing All Albums...</td></tr>`;
+                
+                const albumsSnap = await db.ref('albums').once('value');
+                tbody.innerHTML = "";
+                
+                if (!albumsSnap.exists()) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center opacity-50 uppercase text-xs">No Albums Found</td></tr>`;
+                    return;
+                }
+
+                albumsSnap.forEach(snap => {
+                    const id = snap.key;
+                    const row = document.createElement('tr');
+                    row.className = "border-t border-white/5 hover:bg-white/[0.02]";
+                    row.innerHTML = `
+                        <td class="p-6 font-bold text-blue-400 cursor-pointer hover:underline" onclick="window.open('?id=${id}', '_blank')">${id}</td>
+                        <td id="count-${id}" class="p-6 text-center font-mono text-slate-400">...</td>
+                        <td id="users-${id}" class="p-6 text-center font-bold">...</td>
+                        <td class="p-6 text-right">
+                            <button onclick="deleteFullAlbum('${id}')" class="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-[10px] font-black transition-all">DELETE</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+
+                    db.ref(`photos/${id}`).on('value', s => {
+                        const el = document.getElementById(`count-${id}`);
+                        if(el) el.innerText = s.numChildren();
+                    });
+                    db.ref(`presence/${id}`).on('value', s => {
+                        const count = s.numChildren();
+                        const el = document.getElementById(`users-${id}`);
+                        if(el) {
+                            el.innerText = count;
+                            el.className = count > 0 ? "p-6 text-center font-bold text-green-500" : "p-6 text-center font-bold text-slate-600";
+                        }
+                    });
+                });
+            }
+        }
+
+        function deleteFullAlbum(id) {
+            if (confirm(`⚠️ CRITICAL: Delete Album [${id}] and all its contents?`)) {
+                db.ref(`albums/${id}`).remove();
+                db.ref(`photos/${id}`).remove();
+                db.ref(`comments/${id}`).remove();
+                db.ref(`presence/${id}`).remove();
+                db.ref(`reactions/${id}`).remove();
+                toggleMasterList();
+            }
+        }
+
         function copyLink(url) {
             navigator.clipboard.writeText(url);
-            alert("URL Copied to clipboard!");
+            alert("URL Copied!");
         }
 
         function deletePhoto(id) {
             if (!isAdmin || !id) return;
-            if (confirm("Permanently delete photo?")) {
+            if (confirm("Delete photo?")) {
                 db.ref(`photos/${albumId}/${id}`).remove();
                 db.ref(`comments/${albumId}/${id}`).remove();
                 db.ref(`reactions/${albumId}/${id}`).remove();
@@ -191,40 +270,29 @@
                 const view = document.getElementById('view-feed');
                 const urlRegistry = document.getElementById('admin-url-list');
                 const countBefore = photoList.length;
-                
                 view.innerHTML = "";
                 urlRegistry.innerHTML = "";
                 photoList = [];
-                
                 snap.forEach(child => {
                     const data = child.val();
                     photoList.push({ id: child.key, url: data.url });
-                    
-                    // Main Feed Card
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.03] transition-all cursor-pointer";
                     const adminUI = isAdmin ? "" : "hidden";
-                    
-                    card.innerHTML = `
-                        <img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">
+                    card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">
                         <div class="admin-only ${adminUI} absolute top-2 right-2 flex flex-col gap-2">
-                            <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="bg-red-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white font-bold">✕</button>
-                            <button onclick="event.stopPropagation(); copyLink('${data.url}')" class="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white text-[10px]">🔗</button>
+                            <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="bg-red-600 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold">✕</button>
+                            <button onclick="event.stopPropagation(); copyLink('${data.url}')" class="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px]">🔗</button>
                         </div>`;
-                    
                     card.onclick = () => openModal(child.key, data.url);
                     view.prepend(card);
-
-                    // Admin Registry Entry
                     if(isAdmin) {
-                        urlRegistry.innerHTML += `
-                        <div class="bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1 overflow-hidden">
+                        urlRegistry.innerHTML += `<div class="bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1 overflow-hidden">
                             <span class="text-[8px] text-slate-500 font-mono truncate">${data.url}</span>
                             <button onclick="copyLink('${data.url}')" class="text-[9px] text-blue-400 text-left font-bold uppercase">Copy URL</button>
                         </div>`;
                     }
                 });
-                
                 photoList.reverse();
                 document.getElementById('photo-total').innerText = photoList.length + " Photos";
                 if (!isInitialPhotos && photoList.length > countBefore && !isMuted) {
@@ -244,14 +312,12 @@
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             if(isAdmin) document.getElementById('modalDeleteBtn').classList.remove('hidden');
-
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 const box = document.getElementById('photoComments');
                 box.innerHTML = "";
                 snap.forEach(c => { box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl mb-2"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p>${c.val().text}</p></div>`; });
                 box.scrollTop = box.scrollHeight;
             });
-
             db.ref(`reactions/${albumId}/${id}`).on('value', snap => {
                 const rBox = document.getElementById('reaction-counts');
                 rBox.innerHTML = "";
@@ -353,10 +419,7 @@
             document.getElementById('muteBtn').innerText = isMuted ? "🔇 SOUND OFF" : "🔊 SOUND ON";
         }
 
-        function closeModal() { 
-            document.getElementById('photoModal').classList.add('hidden'); 
-            resetZoom(); 
-        }
+        function closeModal() { document.getElementById('photoModal').classList.add('hidden'); resetZoom(); }
 
         function switchTab(t) {
             document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
