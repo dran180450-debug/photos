@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thamilan | Live Dashboard 2026</title>
+    <title>FlashDrive | Admin Edition 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -39,7 +39,7 @@
 
     <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
         <div class="max-w-md w-full text-center">
-            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡Thamilan</h1>
+            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡FlashDrive</h1>
             <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all">CREATE NEW ALBUM</button>
         </div>
     </div>
@@ -47,11 +47,12 @@
     <main class="flex-1 h-screen overflow-y-auto p-6 md:p-12 pb-32">
         <header class="flex justify-between items-center mb-10">
             <div>
-                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡Thamilan</h1>
+                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
                     <span id="photo-total" class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
                     <button id="muteBtn" onclick="toggleMute()" class="text-[10px] text-slate-400 hover:text-white transition-all">🔊 SOUND ON</button>
+                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all ml-2">🔒 ADMIN</button>
                 </div>
             </div>
             <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs">UPLOAD PHOTO</button>
@@ -68,7 +69,7 @@
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"></div>
             <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
-                <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none">
+                <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none focus:border-blue-500">
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl">🚀</button>
             </div>
         </div>
@@ -86,21 +87,22 @@
                 <button onclick="changePhoto(1)" class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full z-10 flex items-center justify-center text-xl">❯</button>
                 
                 <div id="modalImgContainer" class="flex-1 flex items-center justify-center p-4 overflow-hidden">
-                    <img id="modalImg" src="" onclick="toggleZoom(this)" class="zoom-container max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl transition-all">
+                    <img id="modalImg" src="" onclick="toggleZoom(this)" class="zoom-container max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-200">
                 </div>
 
-                <div class="p-4 flex gap-4 justify-center bg-gradient-to-t from-black/80 to-transparent">
+                <div class="p-4 flex gap-4 justify-center items-center bg-gradient-to-t from-black/80 to-transparent">
                     <button onclick="sendReaction('❤️')" class="text-2xl hover:scale-125 transition-transform">❤️</button>
                     <button onclick="sendReaction('🔥')" class="text-2xl hover:scale-125 transition-transform">🔥</button>
                     <button onclick="sendReaction('😂')" class="text-2xl hover:scale-125 transition-transform">😂</button>
                     <div id="reaction-counts" class="flex gap-2 items-center ml-2 text-[10px] font-black text-slate-300"></div>
+                    <button id="modalDeleteBtn" onclick="deletePhoto(currentPhotoId)" class="admin-only hidden bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black transition-all ml-4 uppercase">Delete Photo</button>
                 </div>
             </div>
 
             <div class="flex-1 flex flex-col border-l border-white/5 p-6 min-w-[300px] bg-slate-900/50">
                 <h3 class="font-black text-[10px] tracking-widest text-blue-500 uppercase mb-4">Comments</h3>
                 <div id="photoComments" class="flex-1 overflow-y-auto space-y-4 text-xs custom-scrollbar"></div>
-                <input id="pcInput" type="text" placeholder="Add comment..." class="mt-4 w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
+                <input id="pcInput" type="text" placeholder="Add comment..." class="mt-4 w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none focus:border-blue-500">
             </div>
         </div>
     </div>
@@ -118,7 +120,8 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; // Update with your actual URL
+        const MASTER_PASS = "admin1988"; // CHANGE THIS TO YOUR SECRET PASSWORD
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -128,6 +131,7 @@
         let currentPhotoId = null;
         let photoList = [];
         let isMuted = false;
+        let isAdmin = false;
         let isInitialPhotos = true;
         let isInitialChat = true;
 
@@ -147,6 +151,30 @@
             db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
         }
 
+        function adminLogin() {
+            const pass = prompt("Enter Admin Password:");
+            if (pass === MASTER_PASS) {
+                isAdmin = true;
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN ACTIVE";
+                document.getElementById('adminLoginBtn').classList.add('text-green-500');
+                // Refresh gallery to show delete buttons on cards
+                initGallery();
+            } else {
+                alert("Incorrect password.");
+            }
+        }
+
+        function deletePhoto(id) {
+            if (!isAdmin || !id) return;
+            if (confirm("Permanently delete this photo?")) {
+                db.ref(`photos/${albumId}/${id}`).remove();
+                db.ref(`comments/${albumId}/${id}`).remove();
+                db.ref(`reactions/${albumId}/${id}`).remove();
+                closeModal();
+            }
+        }
+
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
@@ -158,8 +186,16 @@
                     photoList.push({ id: child.key, url: data.url });
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.03] transition-all cursor-pointer";
+                    
+                    const deleteBtnClass = isAdmin ? "" : "hidden";
+                    card.innerHTML = `
+                        <img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">
+                        <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" 
+                                class="admin-only ${deleteBtnClass} absolute top-3 right-3 bg-red-600 hover:bg-red-700 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white font-bold">
+                                ✕
+                        </button>`;
+                    
                     card.onclick = () => openModal(child.key, data.url);
-                    card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">`;
                     view.prepend(card);
                 });
                 photoList.reverse();
@@ -181,6 +217,8 @@
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             
+            if(isAdmin) document.getElementById('modalDeleteBtn').classList.remove('hidden');
+
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 const box = document.getElementById('photoComments');
                 box.innerHTML = "";
@@ -210,8 +248,7 @@
                     img.style.transformOrigin = `${(e.clientX - left) / width * 100}% ${(e.clientY - top) / height * 100}%`;
                 };
             } else {
-                img.style.transformOrigin = 'center';
-                img.onmousemove = null;
+                img.style.transformOrigin = 'center'; img.onmousemove = null;
             }
         }
 
@@ -268,7 +305,7 @@
                 const box = document.getElementById('global-chat'); box.innerHTML = "";
                 snap.forEach(c => {
                     const d = c.val(); const hasP = d.photoUrl && d.photoId;
-                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5"><b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-3">${hasP ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div></div>`;
+                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-300"><b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-3">${hasP ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div></div>`;
                 });
                 box.scrollTop = box.scrollHeight;
                 isInitialChat = false;
@@ -290,7 +327,11 @@
             document.getElementById('muteBtn').innerText = isMuted ? "🔇 SOUND OFF" : "🔊 SOUND ON";
         }
 
-        function closeModal() { document.getElementById('photoModal').classList.add('hidden'); resetZoom(); }
+        function closeModal() { 
+            document.getElementById('photoModal').classList.add('hidden'); 
+            resetZoom(); 
+        }
+
         function switchTab(t) {
             document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
             document.getElementById('tab-users-content').classList.toggle('hidden', t === 'chat');
