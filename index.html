@@ -3,48 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Master Admin 2026</title>
+    <title>Thamilan | Live Album</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         body { background-color: #020617; color: white; margin: 0; font-family: sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+        .tab-active { color: #facc15; border-bottom: 2px solid #facc15; }
         #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
         @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(4, 1fr); } }
         .photo-card { width: 100%; aspect-ratio: 1/1; overflow: hidden; position: relative; border-radius: 1.5rem; }
         .photo-card img { width: 100%; height: 100%; object-fit: cover; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
-        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(250, 204, 21, 0.5); border-radius: 10px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #facc15; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .reaction-btn { transition: transform 0.2s; cursor: pointer; }
         .reaction-btn:hover { transform: scale(1.3); }
         .nav-btn { background: rgba(0,0,0,0.5); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .nav-btn:hover { background: #3b82f6; }
+        .nav-btn:hover { background: #facc15; color: black; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row h-screen overflow-hidden">
 
     <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
         <div class="max-w-md w-full text-center">
-            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-8 uppercase">⚡FlashDrive</h1>
-            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all">CREATE NEW ALBUM</button>
+            <h1 class="text-6xl font-black italic text-yellow-400 tracking-tighter mb-8 uppercase">Thamilan</h1>
+            <button onclick="createNewAlbum()" class="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-6 rounded-[2rem] font-black text-lg transition-all shadow-xl shadow-yellow-500/20">CREATE NEW ALBUM</button>
         </div>
     </div>
 
     <main class="flex-1 h-full overflow-y-auto p-6 md:p-12 pb-32 custom-scrollbar">
         <header class="flex flex-wrap justify-between items-center mb-10 gap-4">
             <div>
-                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
+                <h1 class="text-4xl font-black italic text-yellow-400 tracking-tighter uppercase">Thamilan</h1>
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
-                    <span id="photo-total" class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
+                    <span id="photo-total" class="text-[9px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
                     <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 uppercase">🔒 Admin</button>
                 </div>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-500/20">Upload Photo</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-yellow-500 text-black px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
         <div id="view-feed"></div>
@@ -55,13 +55,21 @@
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
+        
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
-            <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-2">
-                <input id="chatInput" type="text" placeholder="Say something..." class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
-                <button onclick="sendGlobalChat()" class="bg-blue-600 px-4 rounded-xl">🚀</button>
+            <div class="p-4 bg-white/[0.02] border-t border-white/5 space-y-3">
+                <div class="flex gap-2">
+                    <input id="chatInput" type="text" placeholder="Say something..." class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
+                    <button onclick="sendGlobalChat()" class="bg-yellow-500 text-black px-4 rounded-xl font-bold">🚀</button>
+                </div>
+                <div class="flex justify-between items-center px-1">
+                    <span class="text-[9px] text-slate-500 uppercase font-bold">Posting as: <span id="display-name" class="text-yellow-400 cursor-pointer" onclick="changeName()"></span></span>
+                    <button onclick="changeName()" class="text-[9px] text-slate-400 hover:text-white uppercase font-bold">Change</button>
+                </div>
             </div>
         </div>
+
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
             <div id="user-list" class="space-y-2"></div>
         </div>
@@ -69,21 +77,16 @@
 
     <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-5xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
-            
             <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-white/50 hover:text-white text-3xl">&times;</button>
             
             <div class="flex-[2] bg-black/20 flex flex-col items-center justify-center p-4 relative">
                 <div class="absolute top-6 left-6">
-                    <span class="text-[9px] text-blue-500 font-black uppercase tracking-widest">Uploaded By</span>
+                    <span class="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Uploaded By</span>
                     <h2 id="modalUploader" class="text-xl font-black italic uppercase">---</h2>
                 </div>
 
-                <div class="absolute top-1/2 left-4 -translate-y-1/2 z-50 hidden md:block">
-                    <button onclick="navigatePhoto(-1)" class="nav-btn text-xl">❮</button>
-                </div>
-                <div class="absolute top-1/2 right-4 -translate-y-1/2 z-50 hidden md:block">
-                    <button onclick="navigatePhoto(1)" class="nav-btn text-xl">❯</button>
-                </div>
+                <button onclick="navigatePhoto(-1)" class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 hidden md:flex">❮</button>
+                <button onclick="navigatePhoto(1)" class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex">❯</button>
 
                 <img id="modalImg" src="" class="max-w-full max-h-[55vh] object-contain shadow-2xl mb-6 mt-12">
                 
@@ -92,7 +95,7 @@
                     <button onclick="sendReaction('🔥')" class="reaction-btn text-2xl flex flex-col items-center">🔥<span id="count-🔥" class="text-[9px] mt-1 font-bold">0</span></button>
                     <button onclick="sendReaction('😂')" class="reaction-btn text-2xl flex flex-col items-center">😂<span id="count-😂" class="text-[9px] mt-1 font-bold">0</span></button>
                     <div class="w-px h-8 bg-white/10 mx-2"></div>
-                    <a id="downloadBtn" href="#" download="photo.jpg" class="text-xs font-black uppercase text-slate-400 hover:text-white">Download</a>
+                    <a id="downloadBtn" href="#" download class="text-xs font-black uppercase text-slate-400 hover:text-yellow-400">Save</a>
                 </div>
                 
                 <div class="flex md:hidden gap-10 mt-4">
@@ -102,7 +105,7 @@
             </div>
 
             <div class="flex-1 flex flex-col border-l border-white/5 p-6 bg-slate-900/50">
-                <h3 class="font-black text-[10px] text-blue-500 uppercase mb-4">Comments</h3>
+                <h3 class="font-black text-[10px] text-yellow-400 uppercase mb-4">Comments</h3>
                 <div id="photoComments" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-4"></div>
                 <input id="pcInput" type="text" placeholder="Add a comment..." class="bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
             </div>
@@ -111,7 +114,7 @@
 
     <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
         <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
-            <div class="spinner"></div><span class="text-xs font-black text-blue-400">SYNCING TO CLOUD...</span>
+            <div class="spinner"></div><span class="text-xs font-black text-yellow-400 uppercase tracking-widest">Uploading...</span>
         </div>
     </div>
 
@@ -128,8 +131,10 @@
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
-        let myName = localStorage.getItem('fb_name') || "User-" + Math.floor(Math.random() * 999);
-        localStorage.setItem('fb_name', myName);
+        
+        let myName = localStorage.getItem('thamilan_name') || "User-" + Math.floor(Math.random() * 999);
+        localStorage.setItem('thamilan_name', myName);
+        document.getElementById('display-name').innerText = myName;
 
         let currentPhotoId = null;
         let photoList = []; 
@@ -145,8 +150,18 @@
             setupInputs();
         }
 
+        function changeName() {
+            const n = prompt("Enter your name:", myName);
+            if(n && n.trim().length > 1) {
+                myName = n.trim();
+                localStorage.setItem('thamilan_name', myName);
+                document.getElementById('display-name').innerText = myName;
+                db.ref(`presence/${albumId}/${myName}`).set({ name: myName });
+            }
+        }
+
         function createNewAlbum() {
-            const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
+            const newId = 'th-' + Math.random().toString(36).substr(2, 6);
             db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
         }
 
@@ -158,7 +173,7 @@
                     const data = child.val();
                     photoList.push({ id: child.key, url: data.url, user: data.user });
                     const card = document.createElement('div');
-                    card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer";
+                    card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer shadow-lg";
                     card.innerHTML = `<img src="${data.url}" loading="lazy">${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px]">✕</button>` : ''}`;
                     card.onclick = () => openModal(child.key, data.url, data.user);
                     view.prepend(card);
@@ -175,14 +190,14 @@
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('downloadBtn').href = url;
-            document.getElementById('modalUploader').innerText = uploaderName || "Unknown User";
+            document.getElementById('modalUploader').innerText = uploaderName || "Thamilan Guest";
             document.getElementById('photoModal').classList.remove('hidden');
             
             const box = document.getElementById('photoComments');
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 box.innerHTML = "";
                 snap.forEach(c => {
-                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
+                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl"><b class="text-yellow-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
                 });
                 box.scrollTop = box.scrollHeight;
             });
@@ -222,7 +237,7 @@
                 const d = snap.val();
                 const div = document.createElement('div');
                 div.className = "glass p-3 rounded-xl text-xs animate-in fade-in slide-in-from-bottom-2";
-                div.innerHTML = `<b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-2">${d.photoUrl ? `<img src="${d.photoUrl}" class="w-8 h-8 rounded cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}', '${d.user}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div>`;
+                div.innerHTML = `<b class="text-yellow-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-2">${d.photoUrl ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg cursor-pointer object-cover" onclick="openModal('${d.photoId}', '${d.photoUrl}', '${d.user}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div>`;
                 box.appendChild(div); box.scrollTop = box.scrollHeight;
             });
         }
