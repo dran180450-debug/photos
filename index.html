@@ -21,7 +21,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .reaction-btn { transition: transform 0.2s; cursor: pointer; }
         .reaction-btn:hover { transform: scale(1.3); }
-        .reaction-btn:active { transform: scale(0.9); }
+        .nav-btn { background: rgba(0,0,0,0.5); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .nav-btn:hover { background: #3b82f6; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -46,7 +47,6 @@
             <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-500/20">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
-        
         <div id="view-feed"></div>
     </main>
 
@@ -55,7 +55,6 @@
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
-
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
             <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-2">
@@ -63,33 +62,34 @@
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-4 rounded-xl">🚀</button>
             </div>
         </div>
-
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
-            <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4">Active Now</h3>
             <div id="user-list" class="space-y-2"></div>
         </div>
     </aside>
 
     <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-5xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
-            <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-white/50 hover:text-white text-3xl">&times;</button>
             
-            <div class="flex-[2] bg-black/20 flex flex-col items-center justify-center p-4">
-                <img id="modalImg" src="" class="max-w-full max-h-[70vh] object-contain shadow-2xl mb-4">
+            <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-white/50 hover:text-white text-3xl">&times;</button>
+            <div class="absolute top-1/2 left-4 -translate-y-1/2 z-50 hidden md:block">
+                <button onclick="navigatePhoto(-1)" class="nav-btn text-xl">❮</button>
+            </div>
+            <div class="absolute top-1/2 right-4 -translate-y-1/2 z-50 hidden md:block">
+                <button onclick="navigatePhoto(1)" class="nav-btn text-xl">❯</button>
+            </div>
+
+            <div class="flex-[2] bg-black/20 flex flex-col items-center justify-center p-4 relative group">
+                <img id="modalImg" src="" class="max-w-full max-h-[60vh] object-contain shadow-2xl mb-4">
                 
                 <div class="flex gap-6 items-center bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
-                    <div class="flex flex-col items-center">
-                        <button onclick="sendReaction('❤️')" class="reaction-btn text-3xl">❤️</button>
-                        <span id="count-❤️" class="text-[10px] font-bold mt-1 text-slate-400">0</span>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <button onclick="sendReaction('🔥')" class="reaction-btn text-3xl">🔥</button>
-                        <span id="count-🔥" class="text-[10px] font-bold mt-1 text-slate-400">0</span>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <button onclick="sendReaction('😂')" class="reaction-btn text-3xl">😂</button>
-                        <span id="count-😂" class="text-[10px] font-bold mt-1 text-slate-400">0</span>
-                    </div>
+                    <button onclick="sendReaction('❤️')" class="reaction-btn text-2xl flex flex-col items-center">❤️<span id="count-❤️" class="text-[9px] mt-1">0</span></button>
+                    <button onclick="sendReaction('🔥')" class="reaction-btn text-2xl flex flex-col items-center">🔥<span id="count-🔥" class="text-[9px] mt-1">0</span></button>
+                    <button onclick="sendReaction('😂')" class="reaction-btn text-2xl flex flex-col items-center">😂<span id="count-😂" class="text-[9px] mt-1">0</span></button>
+                </div>
+                
+                <div class="flex md:hidden gap-10 mt-4">
+                    <button onclick="navigatePhoto(-1)" class="nav-btn">❮</button>
+                    <button onclick="navigatePhoto(1)" class="nav-btn">❯</button>
                 </div>
             </div>
 
@@ -103,7 +103,7 @@
 
     <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
         <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
-            <div class="spinner"></div><span class="text-xs font-black text-blue-400 uppercase">Uploading...</span>
+            <div class="spinner"></div><span class="text-xs font-black text-blue-400">UPLOADING...</span>
         </div>
     </div>
 
@@ -114,15 +114,15 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
-        const MASTER_PASS = "admin123";
-
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyw4X9DVuxPaDRUgjEbCfn8qrPY0j25_yXEL8_5gt-d9JfDVcuBbY92xImMJmxgXRT_/exec"; 
+        
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
         let myName = "User-" + Math.floor(Math.random() * 999);
         let currentPhotoId = null;
+        let photoList = []; // For Navigation
         let isAdmin = false;
 
         if (!albumId) {
@@ -137,38 +137,23 @@
 
         function createNewAlbum() {
             const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
-            db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { 
-                window.location.search = '?id=' + newId; 
-            });
-        }
-
-        function adminLogin() {
-            if (prompt("Admin Password:") === MASTER_PASS) {
-                isAdmin = true;
-                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN";
-                document.getElementById('adminLoginBtn').classList.add('text-green-500');
-                initGallery();
-            }
+            db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
         }
 
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
-                view.innerHTML = "";
-                let count = 0;
+                view.innerHTML = ""; photoList = [];
                 snap.forEach(child => {
-                    count++;
                     const data = child.val();
+                    photoList.push({ id: child.key, url: data.url });
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer";
-                    card.innerHTML = `
-                        <img src="${data.url}" loading="lazy">
-                        ${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold">✕</button>` : ''}
-                    `;
+                    card.innerHTML = `<img src="${data.url}" loading="lazy">${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px]">✕</button>` : ''}`;
                     card.onclick = () => openModal(child.key, data.url);
                     view.prepend(card);
                 });
-                document.getElementById('photo-total').innerText = count + " Photos";
+                document.getElementById('photo-total').innerText = photoList.length + " Photos";
             });
         }
 
@@ -181,44 +166,34 @@
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
             
-            // Comments
             const box = document.getElementById('photoComments');
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 box.innerHTML = "";
                 snap.forEach(c => {
-                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl border border-white/5"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
+                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
                 });
                 box.scrollTop = box.scrollHeight;
             });
 
-            // Reactions Listener
-            const emojis = ['❤️', '🔥', '😂'];
-            emojis.forEach(e => document.getElementById('count-' + e).innerText = "0");
-            
-            db.ref(`reactions/${albumId}/${id}`).on('value', snap => {
-                if(snap.exists()){
-                    const data = snap.val();
-                    emojis.forEach(e => {
-                        const count = data[e] ? Object.keys(data[e]).length : 0;
-                        document.getElementById('count-' + e).innerText = count;
-                    });
-                }
+            ['❤️', '🔥', '😂'].forEach(e => {
+                document.getElementById('count-' + e).innerText = "0";
+                db.ref(`reactions/${albumId}/${id}/${e}`).on('value', s => {
+                    document.getElementById('count-' + e).innerText = s.numChildren() || 0;
+                });
             });
         }
 
+        function navigatePhoto(dir) {
+            const idx = photoList.findIndex(p => p.id === currentPhotoId);
+            let next = idx + dir;
+            if(next < 0) next = photoList.length - 1;
+            if(next >= photoList.length) next = 0;
+            openModal(photoList[next].id, photoList[next].url);
+        }
+
         function sendReaction(emoji) {
-            if(!currentPhotoId) return;
-            // Record reaction
             db.ref(`reactions/${albumId}/${currentPhotoId}/${emoji}/${myName}`).set(true);
-            
-            // Push to live stream
-            db.ref(`comments/${albumId}/global`).push({
-                user: myName,
-                text: `reacted ${emoji}`,
-                photoId: currentPhotoId,
-                photoUrl: document.getElementById('modalImg').src,
-                ts: Date.now()
-            });
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: `reacted ${emoji}`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src });
         }
 
         function sendGlobalChat() {
@@ -233,28 +208,9 @@
             db.ref(`comments/${albumId}/global`).limitToLast(25).on('child_added', snap => {
                 const d = snap.val();
                 const div = document.createElement('div');
-                div.className = "glass p-3 rounded-xl text-xs border border-white/5 animate-in fade-in slide-in-from-bottom-2";
-                const hasImg = d.photoUrl && d.photoId;
-                div.innerHTML = `
-                    <b class="text-blue-400 text-[9px] block uppercase">${d.user}</b>
-                    <div class="flex gap-2">
-                        ${hasImg ? `<img src="${d.photoUrl}" class="w-8 h-8 rounded object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}
-                        <p class="text-slate-300 flex-1">${d.text}</p>
-                    </div>`;
-                box.appendChild(div);
-                box.scrollTop = box.scrollHeight;
-            });
-        }
-
-        function initPresence() {
-            const ref = db.ref(`presence/${albumId}/${myName}`);
-            ref.set({ name: myName, ts: Date.now() }); ref.onDisconnect().remove();
-            db.ref(`presence/${albumId}`).on('value', snap => {
-                document.getElementById('online-count').innerText = snap.numChildren() || 0;
-                const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => {
-                    list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`;
-                });
+                div.className = "glass p-3 rounded-xl text-xs animate-in fade-in slide-in-from-bottom-2";
+                div.innerHTML = `<b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-2">${d.photoUrl ? `<img src="${d.photoUrl}" class="w-8 h-8 rounded cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div>`;
+                box.appendChild(div); box.scrollTop = box.scrollHeight;
             });
         }
 
@@ -262,16 +218,27 @@
             document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendGlobalChat(); };
             document.getElementById('pcInput').onkeypress = (e) => { 
                 if(e.key === 'Enter' && e.target.value.trim()) {
-                    const txt = e.target.value;
-                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: txt });
-                    db.ref(`comments/${albumId}/global`).push({ user: myName, text: `💬: "${txt}"`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src });
+                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: e.target.value });
+                    db.ref(`comments/${albumId}/global`).push({ user: myName, text: `💬: "${e.target.value}"`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src });
                     e.target.value = "";
                 }
             };
+            window.onkeydown = (e) => {
+                if(document.getElementById('photoModal').classList.contains('hidden')) return;
+                if(e.key === "ArrowRight") navigatePhoto(1);
+                if(e.key === "ArrowLeft") navigatePhoto(-1);
+                if(e.key === "Escape") closeModal();
+            };
         }
 
-        function deletePhoto(id) {
-            if(confirm("Delete photo?") && isAdmin) db.ref(`photos/${albumId}/${id}`).remove();
+        function initPresence() {
+            const ref = db.ref(`presence/${albumId}/${myName}`);
+            ref.set({ name: myName }); ref.onDisconnect().remove();
+            db.ref(`presence/${albumId}`).on('value', snap => {
+                document.getElementById('online-count').innerText = snap.numChildren() || 0;
+                const list = document.getElementById('user-list'); list.innerHTML = "";
+                snap.forEach(u => { list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`; });
+            });
         }
 
         function closeModal() { document.getElementById('photoModal').classList.add('hidden'); }
@@ -289,7 +256,7 @@
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
                 await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) });
-                setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 4000);
+                setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 5000);
             };
         };
     </script>
