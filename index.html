@@ -3,109 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive</title>
+    <title>FlashDrive | Live Album</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body { background-color: #0f172a; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        /* Masonry Grid Fix */
+        #view-feed { column-count: 2; column-gap: 1rem; }
+        @media (min-width: 768px) { #view-feed { column-count: 3; } }
+        .feed-item { break-inside: avoid; margin-bottom: 1rem; }
+    </style>
 </head>
-<body class="bg-[#0f172a] text-white font-sans min-h-screen">
+<body class="text-white font-sans min-h-screen">
 
     <div class="max-w-4xl mx-auto p-6">
-        <header class="flex justify-between items-center mb-8 bg-slate-800/50 backdrop-blur-md p-6 rounded-3xl border border-white/10">
-            <h1 class="text-2xl font-black italic tracking-tighter text-blue-500">⚡FLASHDRIVE</h1>
-            <div id="album-tag" class="text-[10px] font-mono bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30">INITIALIZING...</div>
+        <header class="flex justify-between items-center mb-8 glass p-6 rounded-3xl">
+            <div>
+                <h1 class="text-2xl font-black italic tracking-tighter text-blue-500 leading-none">⚡FLASHDRIVE</h1>
+                <p class="text-[9px] text-slate-500 font-bold uppercase mt-1 tracking-widest">Google Drive Sync</p>
+            </div>
+            <div id="album-tag" class="text-[10px] font-mono bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-full border border-blue-500/30">
+                SYNCING...
+            </div>
         </header>
 
-        <div class="mb-10 p-12 border-2 border-dashed border-slate-700 rounded-[2.5rem] text-center hover:border-blue-500/50 transition-all group">
+        <div class="mb-10 p-10 border-2 border-dashed border-slate-700 rounded-[2.5rem] text-center hover:border-blue-500/40 transition-all group">
             <input type="file" id="fileInput" class="hidden" accept="image/*">
-            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-2xl font-bold shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
-                UPLOAD TO ALBUM
-            </button>
-            <div id="loader" class="hidden mt-6 flex flex-col items-center gap-3">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                <p class="text-blue-400 font-bold text-xs tracking-widest animate-pulse">SYNCING WITH GOOGLE DRIVE...</p>
+            
+            <div id="idle-ui">
+                <button onclick="document.getElementById('fileInput').click()" 
+                        class="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-2xl font-bold shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                    UPLOAD PHOTO
+                </button>
+                <p class="mt-4 text-slate-500 text-xs font-medium">Images save directly to your Google Drive</p>
+            </div>
+
+            <div id="loader" class="hidden flex flex-col items-center gap-3 py-2">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <p class="text-blue-400 font-bold text-xs tracking-widest animate-pulse">UPLOADING TO DRIVE...</p>
             </div>
         </div>
 
-        <div id="view-feed" class="columns-2 md:columns-3 gap-4 space-y-4">
+        <div id="view-feed">
             </div>
     </div>
 
     <script>
-        // --- YOUR CONFIGS ---
+        // --- 1. CONFIGURATION ---
         const firebaseConfig = { 
-           apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
-  authDomain: "photos-a5dfc.firebaseapp.com",
-  databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
-  projectId: "photos-a5dfc",
-  storageBucket: "photos-a5dfc.firebasestorage.app",
-  messagingSenderId: "964574526842",
-  appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
-  measurementId: "G-1EQJ1D9PRR" 
+            apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
+            authDomain: "photos-a5dfc.firebaseapp.com",
+            databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
+            projectId: "photos-a5dfc",
+            storageBucket: "photos-a5dfc.firebasestorage.app",
+            messagingSenderId: "964574526842",
+            appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
+            measurementId: "G-1EQJ1D9PRR" 
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzQ1ABvFQGRDtKVxvbbPrZGHIFyYsXn6lWFXj_M1zr69bGiOfqtF3zuMj8qj68io8bm/exec";
+        
+        // REPLACE this with your NEW Deployment URL after updating code.gs
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzf3hGDyeMd1IvZDXucpWFQ1Z9jS18LnKdL911bfvz5HoCt2cpgdbtCFL4ImbpGTBGJ/exec";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
 
-        // 1. ALBUM LOGIC
+        // --- 2. ALBUM INITIALIZATION ---
         if (!albumId) {
             const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
             db.ref('albums/' + newId).set({ created: Date.now() }).then(() => {
                 window.location.search = '?id=' + newId;
             });
         } else {
-            document.getElementById('album-tag').innerText = "ID: " + albumId.toUpperCase();
+            document.getElementById('album-tag').innerText = "ALBUM ID: " + albumId.toUpperCase();
             syncGallery();
         }
 
-        // 2. REALTIME GALLERY SYNC
+        // --- 3. REALTIME GALLERY SYNC ---
         function syncGallery() {
+            // Listen to the 'photos/ALBUM_ID' path in Firebase
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
                 
                 if (!snap.exists()) {
-                    view.innerHTML = `<div class="col-span-full py-20 text-center text-slate-500 italic">
-                        No photos found. Be the first to upload!
-                    </div>`;
+                    view.innerHTML = `
+                        <div class="col-span-full py-20 text-center text-slate-600 italic">
+                            Album is empty. Start the party by uploading a photo!
+                        </div>`;
                     return;
                 }
 
-                snap.forEach(child => {
-                    const data = child.val();
-                    const card = document.createElement('div');
-                    card.className = "bg-slate-800 rounded-2xl overflow-hidden border border-white/5 shadow-lg animate-in fade-in zoom-in duration-500";
-                    card.innerHTML = `
+                // Loop through photos (reverse chronological order)
+                const photos = [];
+                snap.forEach(child => { photos.unshift(child.val()); });
+
+                photos.forEach(data => {
+                    const div = document.createElement('div');
+                    div.className = "feed-item bg-slate-800 rounded-2xl overflow-hidden border border-white/5 shadow-xl transition-all hover:border-blue-500/30";
+                    div.innerHTML = `
                         <img src="${data.url}" 
                              referrerpolicy="no-referrer" 
-                             class="w-full h-auto hover:scale-105 transition-transform duration-700 cursor-pointer"
+                             class="w-full h-auto block hover:scale-105 transition-transform duration-700"
+                             onerror="this.onerror=null; setTimeout(() => { this.src='${data.url}&t=' + Date.now(); }, 2000);"
                              onclick="window.open('${data.url}', '_blank')">
-                        <div class="p-3 text-[9px] text-slate-500 font-bold uppercase tracking-tighter">
-                            Contributor: ${data.user}
+                        <div class="p-3 bg-slate-800/80 backdrop-blur-md flex justify-between items-center">
+                            <span class="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">By ${data.user}</span>
+                            <span class="text-[8px] text-slate-600 font-mono">${new Date(data.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                     `;
-                    view.appendChild(card);
+                    view.appendChild(div);
                 });
             });
         }
 
-        // 3. UPLOAD LOGIC
+        // --- 4. UPLOAD HANDLER ---
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
             if(!file) return;
 
+            // Show Loader
             document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('uploadBtn').classList.add('hidden');
+            document.getElementById('idle-ui').classList.add('hidden');
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
+                
                 try {
                     // Send to Google Apps Script
+                    // We use 'no-cors' because GAS doesn't send CORS headers back, 
+                    // but the data will still reach your Drive/Firebase.
                     await fetch(GAS_URL, {
                         method: 'POST',
                         mode: 'no-cors',
@@ -118,17 +150,18 @@
                         })
                     });
                     
-                    // Reset UI after Google has had time to process
+                    // Cleanup UI after 3 seconds (allowing time for Drive/Firebase sync)
                     setTimeout(() => {
                         document.getElementById('loader').classList.add('hidden');
-                        document.getElementById('uploadBtn').classList.remove('hidden');
+                        document.getElementById('idle-ui').classList.remove('hidden');
                         document.getElementById('fileInput').value = "";
-                    }, 4000);
+                    }, 3000);
 
                 } catch(err) {
-                    alert("Sync Error. Check your Script URL.");
+                    console.error(err);
+                    alert("Upload connection failed. Check your GAS URL.");
                     document.getElementById('loader').classList.add('hidden');
-                    document.getElementById('uploadBtn').classList.remove('hidden');
+                    document.getElementById('idle-ui').classList.remove('hidden');
                 }
             };
         };
