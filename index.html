@@ -8,134 +8,110 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background-color: #020617; color: white; margin: 0; overflow: hidden; }
+        body { background-color: #020617; color: white; margin: 0; font-family: sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
-        #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; }
+        #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
         @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(4, 1fr); } }
-        .photo-card { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; border-radius: 1.5rem; }
-        .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .zoom-container { cursor: zoom-in; transition: transform 0.3s ease; }
-        .is-zoomed { cursor: zoom-out; transform: scale(2.5); z-index: 100; }
-        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .photo-card { width: 100%; aspect-ratio: 1/1; overflow: hidden; position: relative; border-radius: 1.5rem; }
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="flex flex-col md:flex-row h-screen">
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
 
     <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
         <div class="max-w-md w-full text-center">
-            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡FlashDrive</h1>
+            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-8 uppercase">⚡FlashDrive</h1>
             <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all">CREATE NEW ALBUM</button>
         </div>
     </div>
 
-    <div id="masterListOverlay" class="hidden fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl p-6 md:p-20 overflow-y-auto custom-scrollbar">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex justify-between items-center mb-10">
-                <h2 class="text-4xl font-black italic text-red-500 uppercase tracking-tighter">Master Control Panel</h2>
-                <button onclick="toggleMasterList()" class="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold">CLOSE PANEL</button>
-            </div>
-            <div class="glass rounded-[2rem] overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-white/5 text-[10px] uppercase font-black text-slate-400">
-                        <tr>
-                            <th class="p-6">Album ID</th>
-                            <th class="p-6 text-center">Photos</th>
-                            <th class="p-6 text-center">Online</th>
-                            <th class="p-6 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="masterTableBody" class="text-sm"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <main class="flex-1 h-screen overflow-y-auto p-6 md:p-12 pb-32 custom-scrollbar">
+    <main class="flex-1 h-full overflow-y-auto p-6 md:p-12 pb-32 custom-scrollbar">
         <header class="flex flex-wrap justify-between items-center mb-10 gap-4">
             <div>
                 <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
                     <span id="photo-total" class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
-                    <button id="muteBtn" onclick="toggleMute()" class="text-[10px] text-slate-400 hover:text-white uppercase">🔊 Sound On</button>
-                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 ml-2 uppercase">🔒 Admin</button>
-                    <button id="masterListBtn" onclick="toggleMasterList()" class="hidden text-[10px] text-red-500 font-black ml-2 uppercase">📊 Master List</button>
+                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 uppercase">🔒 Admin</button>
                 </div>
             </div>
             <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-500/20">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
+        
         <div id="view-feed"></div>
     </main>
 
-    <aside class="w-full md:w-[400px] h-screen glass border-l border-white/5 flex flex-col z-10">
+    <aside class="w-full md:w-[380px] h-full glass border-l border-white/5 flex flex-col">
         <div class="flex border-b border-white/5">
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
+
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
-            <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
-                <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none">
-                <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl">🚀</button>
+            <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-2">
+                <input id="chatInput" type="text" placeholder="Say something..." class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
+                <button onclick="sendGlobalChat()" class="bg-blue-600 px-4 rounded-xl">🚀</button>
             </div>
         </div>
+
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
-            <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4">Active Users</h3>
+            <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4">Active Now</h3>
             <div id="user-list" class="space-y-2"></div>
         </div>
     </aside>
 
-    <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-2 bg-black/95 backdrop-blur-md">
-        <div class="glass max-w-6xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
-            <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-slate-400 hover:text-white text-4xl">&times;</button>
-            <div class="flex-[3] bg-black/40 flex flex-col relative overflow-hidden">
-                <div id="modalImgContainer" class="flex-1 flex items-center justify-center p-4">
-                    <img id="modalImg" src="" class="max-w-full max-h-full object-contain rounded-lg">
-                </div>
+    <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
+        <div class="glass max-w-5xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
+            <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-white/50 hover:text-white text-3xl">&times;</button>
+            
+            <div class="flex-[2] bg-black/20 flex items-center justify-center p-4">
+                <img id="modalImg" src="" class="max-w-full max-h-full object-contain shadow-2xl">
             </div>
+
             <div class="flex-1 flex flex-col border-l border-white/5 p-6 bg-slate-900/50">
                 <h3 class="font-black text-[10px] text-blue-500 uppercase mb-4">Comments</h3>
-                <div id="photoComments" class="flex-1 overflow-y-auto custom-scrollbar mb-4"></div>
-                <input id="pcInput" type="text" placeholder="Add comment..." class="bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
+                <div id="photoComments" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-4"></div>
+                <input id="pcInput" type="text" placeholder="Add a comment..." class="bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
             </div>
         </div>
     </div>
 
-    <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] hidden">
+    <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
         <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
-            <div class="spinner"></div><span class="text-xs font-black text-blue-400">UPLOADING...</span>
+            <div class="spinner"></div><span class="text-xs font-black text-blue-400">UPLOADING TO DRIVE...</span>
         </div>
     </div>
 
-    <audio id="sound-photo" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
     <audio id="sound-comment" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
 
     <script>
+        // CONFIG
         const firebaseConfig = { 
             apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
             databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyw4X9DVuxPaDRUgjEbCfn8qrPY0j25_yXEL8_5gt-d9JfDVcuBbY92xImMJmxgXRT_/exec"; // IMPORTANT: Update this
         const MASTER_PASS = "admin123";
 
+        // APP STATE
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
         let myName = "User-" + Math.floor(Math.random() * 999);
         let currentPhotoId = null;
-        let photoList = [];
-        let isMuted = false;
         let isAdmin = false;
-        let isInitialPhotos = true;
 
+        // INITIALIZATION
         if (!albumId) {
             document.getElementById('landing-page').classList.remove('hidden');
         } else {
@@ -143,6 +119,7 @@
             initPresence();
             initGallery();
             initGlobalChat();
+            setupInputs();
         }
 
         function createNewAlbum() {
@@ -153,63 +130,49 @@
         }
 
         function adminLogin() {
-            const pass = prompt("Admin Password:");
-            if (pass === MASTER_PASS) {
+            if (prompt("Admin Password:") === MASTER_PASS) {
                 isAdmin = true;
-                document.getElementById('masterListBtn').classList.remove('hidden');
-                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN";
+                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN ACTIVE";
                 document.getElementById('adminLoginBtn').classList.add('text-green-500');
-                initGallery();
-            }
-        }
-
-        async function toggleMasterList() {
-            const panel = document.getElementById('masterListOverlay');
-            panel.classList.toggle('hidden');
-            if (!panel.classList.contains('hidden')) {
-                const tbody = document.getElementById('masterTableBody');
-                tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center'>Scanning...</td></tr>";
-                const snap = await db.ref('albums').once('value');
-                tbody.innerHTML = "";
-                snap.forEach(child => {
-                    const id = child.key;
-                    tbody.innerHTML += `
-                        <tr class="border-t border-white/5">
-                            <td class="p-6 text-blue-400 cursor-pointer" onclick="window.location.search='?id=${id}'">${id}</td>
-                            <td class="p-6 text-center font-mono">-</td>
-                            <td class="p-6 text-center">Active</td>
-                            <td class="p-6 text-right"><button onclick="deleteFullAlbum('${id}')" class="text-red-500 text-[10px]">DELETE</button></td>
-                        </tr>`;
-                });
+                initGallery(); // Refresh to show delete buttons
             }
         }
 
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
-                view.innerHTML = ""; photoList = [];
+                view.innerHTML = "";
+                let count = 0;
                 snap.forEach(child => {
+                    count++;
                     const data = child.val();
-                    photoList.push({ id: child.key, url: data.url });
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer";
-                    card.innerHTML = `<img src="${data.url}" loading="lazy">
-                        ${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-3 right-3 bg-red-600 w-8 h-8 rounded-full flex items-center justify-center font-bold">✕</button>` : ''}`;
+                    card.innerHTML = `
+                        <img src="${data.url}" loading="lazy">
+                        ${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold">✕</button>` : ''}
+                    `;
                     card.onclick = () => openModal(child.key, data.url);
                     view.prepend(card);
                 });
-                document.getElementById('photo-total').innerText = photoList.length + " Photos";
-                isInitialPhotos = false;
+                document.getElementById('photo-total').innerText = count + " Photos";
             });
         }
 
         function openModal(id, url) {
+            if (currentPhotoId) db.ref(`comments/${albumId}/${currentPhotoId}`).off();
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
+            
+            const box = document.getElementById('photoComments');
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
-                const box = document.getElementById('photoComments'); box.innerHTML = "";
-                snap.forEach(c => { box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl mb-2"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p>${c.val().text}</p></div>`; });
+                box.innerHTML = "";
+                snap.forEach(c => {
+                    const d = c.val();
+                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl border border-white/5"><b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><p class="text-slate-200 text-sm">${d.text}</p></div>`;
+                });
+                box.scrollTop = box.scrollHeight;
             });
         }
 
@@ -223,13 +186,21 @@
         }
 
         function initGlobalChat() {
-            db.ref(`comments/${albumId}/global`).limitToLast(20).on('value', snap => {
-                const box = document.getElementById('global-chat'); box.innerHTML = "";
-                snap.forEach(c => {
-                    const d = c.val();
-                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5"><b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><p class="text-slate-300">${d.text}</p></div>`;
-                });
+            const box = document.getElementById('global-chat');
+            db.ref(`comments/${albumId}/global`).limitToLast(25).on('child_added', snap => {
+                const d = snap.val();
+                const div = document.createElement('div');
+                div.className = "glass p-3 rounded-xl text-xs border border-white/5 animate-in fade-in slide-in-from-bottom-2";
+                const hasImg = d.photoUrl && d.photoId;
+                div.innerHTML = `
+                    <b class="text-blue-400 text-[9px] block uppercase">${d.user}</b>
+                    <div class="flex gap-2">
+                        ${hasImg ? `<img src="${d.photoUrl}" class="w-8 h-8 rounded object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}
+                        <p class="text-slate-300 flex-1">${d.text}</p>
+                    </div>`;
+                box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
+                document.getElementById('sound-comment').play().catch(()=>{});
             });
         }
 
@@ -239,8 +210,26 @@
             db.ref(`presence/${albumId}`).on('value', snap => {
                 document.getElementById('online-count').innerText = snap.numChildren() || 0;
                 const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => { list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`; });
+                snap.forEach(u => {
+                    list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`;
+                });
             });
+        }
+
+        function setupInputs() {
+            document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendGlobalChat(); };
+            document.getElementById('pcInput').onkeypress = (e) => { 
+                if(e.key === 'Enter' && e.target.value.trim()) {
+                    const txt = e.target.value;
+                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: txt });
+                    db.ref(`comments/${albumId}/global`).push({ user: myName, text: `💬: "${txt}"`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src });
+                    e.target.value = "";
+                }
+            };
+        }
+
+        function deletePhoto(id) {
+            if(confirm("Delete this photo?") && isAdmin) db.ref(`photos/${albumId}/${id}`).remove();
         }
 
         function switchTab(t) {
@@ -250,23 +239,16 @@
             document.getElementById('btn-users').classList.toggle('tab-active', t !== 'chat');
         }
 
-        document.getElementById('fileInput').onchange = async (e) => {
+        document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0]; if(!file) return;
             document.getElementById('uploadToast').classList.remove('hidden');
             const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
-                try {
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) });
-                } catch(e) {}
-                setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 3000);
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) });
+                setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 4000);
             };
         };
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            document.getElementById('muteBtn').innerText = isMuted ? "🔇 SOUND OFF" : "🔊 SOUND ON";
-        }
     </script>
 </body>
 </html>
