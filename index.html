@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Master Admin 2026</title>
+    <title>FlashDrive | Super Admin 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -12,13 +12,20 @@
         body { background: #020617; color: white; overflow: hidden; height: 100vh; font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+        
         #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; }
-        @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(4, 1fr); } }
+        @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(3, 1fr); } }
+        
         .photo-card { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; border-radius: 1.5rem; }
         .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
         .zoom-container { cursor: zoom-in; transition: transform 0.3s ease; }
         .is-zoomed { cursor: zoom-out; transform: scale(2.5); z-index: 100; }
+        
         .nav-btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
+        .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
     </style>
@@ -28,26 +35,10 @@
     <audio id="sound-photo" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto"></audio>
     <audio id="sound-comment" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
 
-    <div id="masterListOverlay" class="hidden fixed inset-0 z-[300] bg-slate-950/95 backdrop-blur-xl p-6 md:p-20 overflow-y-auto custom-scrollbar">
-        <div class="max-w-6xl mx-auto">
-            <div class="flex justify-between items-center mb-10">
-                <h2 class="text-4xl font-black italic text-red-500 uppercase tracking-tighter">Master Control Panel</h2>
-                <button onclick="toggleMasterList()" class="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-xl font-bold">CLOSE PANEL</button>
-            </div>
-            <div class="glass rounded-[2rem] overflow-hidden border border-white/10">
-                <table class="w-full text-left border-collapse">
-                    <thead class="bg-white/5 text-[10px] uppercase font-black tracking-widest text-slate-400">
-                        <tr>
-                            <th class="p-6">Album ID</th>
-                            <th class="p-6 text-center">Photos</th>
-                            <th class="p-6 text-center">Online</th>
-                            <th class="p-6 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="masterTableBody" class="text-sm">
-                        </tbody>
-                </table>
-            </div>
+    <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
+        <div class="max-w-md w-full text-center">
+            <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡FlashDrive</h1>
+            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all">CREATE NEW ALBUM</button>
         </div>
     </div>
 
@@ -58,11 +49,11 @@
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
                     <span id="photo-total" class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
-                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all uppercase">🔒 Admin</button>
-                    <button id="masterListBtn" onclick="toggleMasterList()" class="hidden text-[10px] text-red-500 font-black hover:scale-105 transition-all ml-2 uppercase">📊 Master List</button>
+                    <button id="muteBtn" onclick="toggleMute()" class="text-[10px] text-slate-400 hover:text-white transition-all uppercase">🔊 Sound On</button>
+                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all ml-2 uppercase">🔒 Admin</button>
                 </div>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-500/20">Upload Photo</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
         <div id="view-feed"></div>
@@ -70,34 +61,61 @@
 
     <aside class="w-full md:w-[400px] h-screen glass border-l border-white/5 flex flex-col z-10">
         <div class="flex border-b border-white/5">
-            <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Live Stream</button>
+            <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Activity Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
+        
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
-            <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
+            <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"></div>
             <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
                 <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none">
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl">🚀</button>
             </div>
         </div>
+
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
-            <div id="user-list" class="space-y-2"></div>
+            <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest">Active Users</h3>
+            <div id="user-list" class="space-y-2 mb-10"></div>
+            
+            <div id="admin-links-section" class="hidden">
+                <h3 class="text-[10px] font-black text-red-500 uppercase mb-4 tracking-widest">Admin Photo Registry</h3>
+                <div id="admin-url-list" class="space-y-2"></div>
+            </div>
         </div>
     </aside>
 
-    <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-2 bg-black/95 backdrop-blur-md">
+    <div id="photoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-2 md:p-8 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-6xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
             <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-slate-400 hover:text-white text-4xl">&times;</button>
+            
             <div class="flex-[3] bg-black/40 flex flex-col relative overflow-hidden">
+                <button onclick="changePhoto(-1)" class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full z-10 flex items-center justify-center text-xl">❮</button>
+                <button onclick="changePhoto(1)" class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full z-10 flex items-center justify-center text-xl">❯</button>
+                
                 <div id="modalImgContainer" class="flex-1 flex items-center justify-center p-4 overflow-hidden">
-                    <img id="modalImg" src="" onclick="toggleZoom(this)" class="zoom-container max-w-full max-h-full w-auto h-auto object-contain rounded-lg">
+                    <img id="modalImg" src="" onclick="toggleZoom(this)" class="zoom-container max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl transition-all duration-200">
+                </div>
+
+                <div class="p-4 flex gap-4 justify-center items-center bg-gradient-to-t from-black/80 to-transparent">
+                    <button onclick="sendReaction('❤️')" class="text-2xl hover:scale-125 transition-transform">❤️</button>
+                    <button onclick="sendReaction('🔥')" class="text-2xl hover:scale-125 transition-transform">🔥</button>
+                    <button onclick="sendReaction('😂')" class="text-2xl hover:scale-125 transition-transform">😂</button>
+                    <div id="reaction-counts" class="flex gap-2 items-center ml-2 text-[10px] font-black text-slate-300"></div>
+                    <button id="modalDeleteBtn" onclick="deletePhoto(currentPhotoId)" class="admin-only hidden bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black transition-all ml-4 uppercase">Delete Photo</button>
                 </div>
             </div>
+
             <div class="flex-1 flex flex-col border-l border-white/5 p-6 min-w-[300px] bg-slate-900/50">
                 <h3 class="font-black text-[10px] tracking-widest text-blue-500 uppercase mb-4">Comments</h3>
                 <div id="photoComments" class="flex-1 overflow-y-auto space-y-4 text-xs custom-scrollbar"></div>
                 <input id="pcInput" type="text" placeholder="Add comment..." class="mt-4 w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none focus:border-blue-500">
             </div>
+        </div>
+    </div>
+
+    <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] hidden">
+        <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3 border-blue-500/30">
+            <div class="spinner"></div><span class="text-xs font-black text-blue-400">UPLOADING...</span>
         </div>
     </div>
 
@@ -108,7 +126,9 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const MASTER_PASS = "admin123";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
+        const MASTER_PASS = "admin1988";
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
@@ -116,99 +136,49 @@
         let myName = "User-" + Math.floor(Math.random() * 999);
         let currentPhotoId = null;
         let photoList = [];
+        let isMuted = false;
         let isAdmin = false;
+        let isInitialPhotos = true;
+        let isInitialChat = true;
 
-        if (!albumId) { document.getElementById('landing-page').classList.remove('hidden'); } 
-        else {
+        if (!albumId) {
+            document.getElementById('landing-page').classList.remove('hidden');
+        } else {
+            document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('album-id-tag').innerText = "Album: " + albumId;
-            initPresence(); initGallery(); initGlobalChat(); setupKeyboard();
+            initPresence();
+            initGallery();
+            initGlobalChat();
+            setupKeyboard();
+        }
+
+        function createNewAlbum() {
+            const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
+            db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
         }
 
         function adminLogin() {
-            const pass = prompt("Admin Password:");
+            const pass = prompt("Enter Admin Password:");
             if (pass === MASTER_PASS) {
                 isAdmin = true;
-                document.getElementById('masterListBtn').classList.remove('hidden');
-                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN";
-                initGallery();
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                document.getElementById('admin-links-section').classList.remove('hidden');
+                document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN ACTIVE";
+                document.getElementById('adminLoginBtn').classList.add('text-green-500');
+                initGallery(); // Refresh for buttons
+            } else {
+                alert("Incorrect password.");
             }
         }
 
-       async function toggleMasterList() {
-    const panel = document.getElementById('masterListOverlay');
-    panel.classList.toggle('hidden');
-    
-    if (!panel.classList.contains('hidden')) {
-        const tbody = document.getElementById('masterTableBody');
-        tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center opacity-50'>Scanning Database...</td></tr>";
-        
-        // 1. Fetch all album keys
-        db.ref('albums').once('value', (allAlbumsSnap) => {
-            tbody.innerHTML = ""; // Clear the loading message
-            
-            if (!allAlbumsSnap.exists()) {
-                tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center'>No albums found.</td></tr>";
-                return;
-            }
-
-            // 2. Loop through every album ID found
-            allAlbumsSnap.forEach((albumSnap) => {
-                const id = albumSnap.key;
-                
-                // Create a row placeholder for this album
-                const rowId = `row-${id}`;
-                tbody.innerHTML += `
-                    <tr id="${rowId}" class="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
-                        <td class="p-6 font-bold text-blue-400 cursor-pointer hover:underline" onclick="window.open('?id=${id}', '_blank')">
-                            ${id} ${id === albumId ? '<span class="text-[8px] bg-blue-500/20 px-2 py-1 rounded ml-2">ACTIVE</span>' : ''}
-                        </td>
-                        <td id="photos-${id}" class="p-6 text-center font-mono opacity-50">...</td>
-                        <td id="online-${id}" class="p-6 text-center opacity-50">...</td>
-                        <td class="p-6 text-right">
-                            <button onclick="deleteFullAlbum('${id}')" class="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-[10px] font-black transition-all">
-                                DELETE ALBUM
-                            </button>
-                        </td>
-                    </tr>`;
-
-                // 3. Live-fetch the counts for THIS specific row
-                // Get Photo Count
-                db.ref(`photos/${id}`).on('value', pSnap => {
-                    const countEl = document.getElementById(`photos-${id}`);
-                    if (countEl) {
-                        countEl.innerText = pSnap.numChildren() || 0;
-                        countEl.classList.remove('opacity-50');
-                    }
-                });
-
-                // Get Online User Count
-                db.ref(`presence/${id}`).on('value', uSnap => {
-                    const onlineEl = document.getElementById(`online-${id}`);
-                    if (onlineEl) {
-                        const count = uSnap.numChildren() || 0;
-                        onlineEl.innerHTML = `<span class="${count > 0 ? 'text-green-500' : 'text-slate-600'} font-bold">${count} Users</span>`;
-                        onlineEl.classList.remove('opacity-50');
-                    }
-                });
-            });
-        });
-    }
-}
-
-        function deleteFullAlbum(id) {
-            if (confirm(`CRITICAL: Are you sure you want to delete Album ${id}? All photos and comments will be lost forever.`)) {
-                db.ref(`albums/${id}`).remove();
-                db.ref(`photos/${id}`).remove();
-                db.ref(`comments/${id}`).remove();
-                db.ref(`presence/${id}`).remove();
-                db.ref(`reactions/${id}`).remove();
-                toggleMasterList(); // Refresh
-            }
+        function copyLink(url) {
+            navigator.clipboard.writeText(url);
+            alert("URL Copied to clipboard!");
         }
 
         function deletePhoto(id) {
-            if (!isAdmin) return;
-            if (confirm("Delete photo?")) {
+            if (!isAdmin || !id) return;
+            if (confirm("Permanently delete photo?")) {
                 db.ref(`photos/${albumId}/${id}`).remove();
                 db.ref(`comments/${albumId}/${id}`).remove();
                 db.ref(`reactions/${albumId}/${id}`).remove();
@@ -219,39 +189,153 @@
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
-                view.innerHTML = ""; photoList = [];
+                const urlRegistry = document.getElementById('admin-url-list');
+                const countBefore = photoList.length;
+                
+                view.innerHTML = "";
+                urlRegistry.innerHTML = "";
+                photoList = [];
+                
                 snap.forEach(child => {
                     const data = child.val();
                     photoList.push({ id: child.key, url: data.url });
+                    
+                    // Main Feed Card
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.03] transition-all cursor-pointer";
-                    card.innerHTML = `<img src="${data.url}" loading="lazy">
-                        ${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-3 right-3 bg-red-600 w-8 h-8 rounded-full flex items-center justify-center font-bold">✕</button>` : ''}`;
+                    const adminUI = isAdmin ? "" : "hidden";
+                    
+                    card.innerHTML = `
+                        <img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">
+                        <div class="admin-only ${adminUI} absolute top-2 right-2 flex flex-col gap-2">
+                            <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="bg-red-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white font-bold">✕</button>
+                            <button onclick="event.stopPropagation(); copyLink('${data.url}')" class="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white text-[10px]">🔗</button>
+                        </div>`;
+                    
                     card.onclick = () => openModal(child.key, data.url);
                     view.prepend(card);
+
+                    // Admin Registry Entry
+                    if(isAdmin) {
+                        urlRegistry.innerHTML += `
+                        <div class="bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1 overflow-hidden">
+                            <span class="text-[8px] text-slate-500 font-mono truncate">${data.url}</span>
+                            <button onclick="copyLink('${data.url}')" class="text-[9px] text-blue-400 text-left font-bold uppercase">Copy URL</button>
+                        </div>`;
+                    }
                 });
+                
+                photoList.reverse();
                 document.getElementById('photo-total').innerText = photoList.length + " Photos";
+                if (!isInitialPhotos && photoList.length > countBefore && !isMuted) {
+                    document.getElementById('sound-photo').play().catch(()=>{});
+                }
+                isInitialPhotos = false;
             });
         }
 
         function openModal(id, url) {
+            resetZoom();
+            if (currentPhotoId) {
+                db.ref(`comments/${albumId}/${currentPhotoId}`).off();
+                db.ref(`reactions/${albumId}/${currentPhotoId}`).off();
+            }
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
+            if(isAdmin) document.getElementById('modalDeleteBtn').classList.remove('hidden');
+
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
-                const box = document.getElementById('photoComments'); box.innerHTML = "";
+                const box = document.getElementById('photoComments');
+                box.innerHTML = "";
                 snap.forEach(c => { box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl mb-2"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b><p>${c.val().text}</p></div>`; });
                 box.scrollTop = box.scrollHeight;
             });
+
+            db.ref(`reactions/${albumId}/${id}`).on('value', snap => {
+                const rBox = document.getElementById('reaction-counts');
+                rBox.innerHTML = "";
+                if(snap.exists()){
+                    const res = snap.val();
+                    Object.keys(res).forEach(emoji => {
+                        const count = Object.keys(res[emoji]).length;
+                        rBox.innerHTML += `<span class="bg-white/10 px-2 py-1 rounded-full text-[10px]">${emoji} ${count}</span>`;
+                    });
+                }
+            });
+        }
+
+        function toggleZoom(img) {
+            img.classList.toggle('is-zoomed');
+            img.parentElement.style.overflow = img.classList.contains('is-zoomed') ? 'auto' : 'hidden';
+            if (img.classList.contains('is-zoomed')) {
+                img.onmousemove = (e) => {
+                    const { left, top, width, height } = img.getBoundingClientRect();
+                    img.style.transformOrigin = `${(e.clientX - left) / width * 100}% ${(e.clientY - top) / height * 100}%`;
+                };
+            } else {
+                img.style.transformOrigin = 'center'; img.onmousemove = null;
+            }
+        }
+
+        function resetZoom() {
+            const img = document.getElementById('modalImg');
+            img.classList.remove('is-zoomed');
+            img.parentElement.style.overflow = 'hidden';
+            img.style.transformOrigin = 'center';
+        }
+
+        function changePhoto(step) {
+            if (photoList.length <= 1) return;
+            let index = photoList.findIndex(p => p.id === currentPhotoId);
+            index = (index + step + photoList.length) % photoList.length;
+            openModal(photoList[index].id, photoList[index].url);
+        }
+
+        function sendReaction(emoji) {
+            if (!currentPhotoId) return;
+            db.ref(`reactions/${albumId}/${currentPhotoId}/${emoji}/${myName}`).set(true);
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: `reacted ${emoji}`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src, ts: Date.now() });
         }
 
         function setupKeyboard() {
+            window.addEventListener('keydown', (e) => {
+                if(document.getElementById('photoModal').classList.contains('hidden')) return;
+                if(e.key === 'ArrowRight') changePhoto(1);
+                if(e.key === 'ArrowLeft') changePhoto(-1);
+                if(e.key === 'Escape') closeModal();
+            });
+            document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendGlobalChat(); };
             document.getElementById('pcInput').onkeypress = (e) => { 
                 if(e.key === 'Enter' && e.target.value.trim()) {
-                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: e.target.value });
+                    const t = e.target.value;
+                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: t });
+                    db.ref(`comments/${albumId}/global`).push({ user: myName, text: `💬: "${t}"`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src, ts: Date.now() });
                     e.target.value = "";
                 }
             };
+        }
+
+        function sendGlobalChat() {
+            const input = document.getElementById('chatInput');
+            if(!input.value.trim()) return;
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: input.value, ts: Date.now() });
+            input.value = "";
+        }
+
+        function initGlobalChat() {
+            db.ref(`comments/${albumId}/global`).limitToLast(1).on('child_added', snap => {
+                if (!isInitialChat && !isMuted) document.getElementById('sound-comment').play().catch(()=>{});
+            });
+            db.ref(`comments/${albumId}/global`).limitToLast(25).on('value', snap => {
+                const box = document.getElementById('global-chat'); box.innerHTML = "";
+                snap.forEach(c => {
+                    const d = c.val(); const hasP = d.photoUrl && d.photoId;
+                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5 animate-in fade-in slide-in-from-bottom-2 duration-300"><b class="text-blue-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-3">${hasP ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div></div>`;
+                });
+                box.scrollTop = box.scrollHeight;
+                isInitialChat = false;
+            });
         }
 
         function initPresence() {
@@ -260,21 +344,37 @@
             db.ref(`presence/${albumId}`).on('value', snap => {
                 document.getElementById('online-count').innerText = snap.numChildren() || 0;
                 const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => { list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`; });
+                snap.forEach(u => { list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl border border-white/5"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`; });
             });
         }
 
-        function createNewAlbum() {
-            const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
-            db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('muteBtn').innerText = isMuted ? "🔇 SOUND OFF" : "🔊 SOUND ON";
         }
 
-        function toggleZoom(img) { img.classList.toggle('is-zoomed'); }
-        function closeModal() { document.getElementById('photoModal').classList.add('hidden'); }
+        function closeModal() { 
+            document.getElementById('photoModal').classList.add('hidden'); 
+            resetZoom(); 
+        }
+
         function switchTab(t) {
             document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
             document.getElementById('tab-users-content').classList.toggle('hidden', t === 'chat');
+            document.getElementById('btn-chat').classList.toggle('tab-active', t === 'chat');
+            document.getElementById('btn-users').classList.toggle('tab-active', t !== 'chat');
         }
+
+        document.getElementById('fileInput').onchange = async (e) => {
+            const file = e.target.files[0]; if(!file) return;
+            document.getElementById('uploadToast').classList.remove('hidden');
+            const reader = new FileReader(); reader.readAsDataURL(file);
+            reader.onload = async () => {
+                const base64 = reader.result.split(',')[1];
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) });
+                setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 4000);
+            };
+        };
     </script>
 </body>
 </html>
