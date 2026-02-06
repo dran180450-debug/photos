@@ -27,7 +27,8 @@
     <div id="landing-page" class="fixed inset-0 z-[200] bg-slate-950 flex items-center justify-center p-6 hidden">
         <div class="max-w-md w-full text-center">
             <h1 class="text-6xl font-black italic text-blue-500 tracking-tighter mb-4 uppercase">⚡FlashDrive</h1>
-            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all uppercase">Create New Album</button>
+            <p class="text-slate-500 mb-8 font-bold uppercase text-xs tracking-widest">No album selected</p>
+            <button onclick="createNewAlbum()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-6 rounded-[2rem] font-black text-lg transition-all uppercase shadow-2xl shadow-blue-500/20">Create New Album</button>
         </div>
     </div>
 
@@ -58,7 +59,7 @@
     <main class="flex-1 h-screen overflow-y-auto p-6 md:p-12 pb-32">
         <header class="flex justify-between items-center mb-10">
             <div>
-                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
+                <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase cursor-pointer" onclick="location.href=location.pathname">⚡FlashDrive</h1>
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
                     <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all uppercase">🔒 Login</button>
@@ -100,6 +101,7 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
+        // MAKE SURE THIS IS YOUR CURRENT "EXEC" URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
         const MASTER_PASS = "admin1988";
 
@@ -110,9 +112,11 @@
         let myName = "Guest-" + Math.floor(Math.random() * 999);
         let isAdmin = false;
 
+        // Route Handling
         if (!albumId) {
             document.getElementById('landing-page').classList.remove('hidden');
         } else {
+            document.getElementById('landing-page').classList.add('hidden');
             document.getElementById('album-id-tag').innerText = "Album: " + albumId;
             initPresence();
             initGallery();
@@ -128,11 +132,14 @@
             const pass = prompt("Password:");
             if (pass === MASTER_PASS) {
                 isAdmin = true;
-                const btn = document.createElement('button');
-                btn.className = "text-[10px] text-red-500 font-black ml-4 uppercase";
-                btn.innerText = "📊 Master List";
-                btn.onclick = toggleMasterList;
-                document.getElementById('adminLoginBtn').after(btn);
+                if(!document.getElementById('master-list-btn')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'master-list-btn';
+                    btn.className = "text-[10px] text-red-500 font-black ml-4 uppercase";
+                    btn.innerText = "📊 Master List";
+                    btn.onclick = toggleMasterList;
+                    document.getElementById('adminLoginBtn').after(btn);
+                }
                 document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN";
             }
         }
@@ -140,28 +147,41 @@
         async function toggleMasterList() {
             const panel = document.getElementById('masterListOverlay');
             panel.classList.toggle('hidden');
+            
             if (!panel.classList.contains('hidden')) {
                 const tbody = document.getElementById('masterTableBody');
-                tbody.innerHTML = `<tr><td colspan="3" class="p-10 text-center opacity-50 uppercase text-xs">Fetching Drive Folders...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="p-10 text-center opacity-50 uppercase text-xs animate-pulse">Syncing folders from Google Drive...</td></tr>`;
                 
                 try {
-                    const resp = await fetch(GAS_URL);
+                    // We use GET for fetching folder lists
+                    const resp = await fetch(GAS_URL); 
                     const folders = await resp.json();
+                    
                     tbody.innerHTML = "";
+                    if(folders.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="3" class="p-10 text-center text-slate-500">No folders found in parent directory.</td></tr>`;
+                        return;
+                    }
+
                     folders.forEach(f => {
-                        tbody.innerHTML += `
-                            <tr class="border-t border-white/5 hover:bg-white/[0.02]">
-                                <td class="p-6">
-                                    <div class="font-bold text-white">${f.name}</div>
-                                    <a href="${f.url}" target="_blank" class="text-[9px] text-blue-500 uppercase font-bold">Open Folder in Drive ↗</a>
-                                </td>
-                                <td class="p-6 text-center font-mono">${f.count}</td>
-                                <td class="p-6 text-right">
-                                    <button onclick="window.open('?id=${f.name}', '_blank')" class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase">Launch App</button>
-                                </td>
-                            </tr>`;
+                        const row = document.createElement('tr');
+                        row.className = "border-t border-white/5 hover:bg-white/[0.02]";
+                        row.innerHTML = `
+                            <td class="p-6">
+                                <div class="font-bold text-white text-lg">${f.name}</div>
+                                <a href="${f.url}" target="_blank" class="text-[9px] text-blue-500 uppercase font-bold hover:underline">View Source Files in Drive ↗</a>
+                            </td>
+                            <td class="p-6 text-center font-mono text-slate-400">${f.count}</td>
+                            <td class="p-6 text-right">
+                                <button onclick="window.location.search = '?id=${f.name}'" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase transition-all shadow-lg shadow-blue-500/20">Launch Gallery</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
                     });
-                } catch(e) { alert("Check GAS URL Deployment"); }
+                } catch(e) { 
+                    tbody.innerHTML = `<tr><td colspan="3" class="p-10 text-center text-red-400">Error: Could not fetch from Drive. Check GAS URL and Permissions.</td></tr>`;
+                    console.error(e);
+                }
             }
         }
 
@@ -169,10 +189,13 @@
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
+                if(!snap.exists()) {
+                    view.innerHTML = `<div class="col-span-full py-20 text-center text-slate-600 font-bold uppercase text-xs tracking-widest">No photos yet. Be the first to upload!</div>`;
+                }
                 snap.forEach(child => {
                     const data = child.val();
                     const card = document.createElement('div');
-                    card.className = "photo-card glass";
+                    card.className = "photo-card glass group animate-in fade-in zoom-in duration-300";
                     card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">`;
                     view.prepend(card);
                 });
@@ -185,15 +208,24 @@
             db.ref(`presence/${albumId}`).on('value', snap => {
                 document.getElementById('online-count').innerText = snap.numChildren() || 0;
                 const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => { list.innerHTML += `<div class="p-3 glass rounded-xl text-[10px] uppercase font-bold">${u.val().name}</div>`; });
+                snap.forEach(u => { 
+                    const userData = u.val();
+                    list.innerHTML += `<div class="p-3 glass rounded-xl text-[10px] uppercase font-bold border border-white/5 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>${userData.name}
+                    </div>`; 
+                });
             });
         }
 
         function initGlobalChat() {
-            db.ref(`comments/${albumId}/global`).limitToLast(20).on('value', snap => {
+            db.ref(`comments/${albumId}/global`).limitToLast(25).on('value', snap => {
                 const box = document.getElementById('global-chat'); box.innerHTML = "";
                 snap.forEach(c => {
-                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs"><b class="text-blue-400 text-[9px] block uppercase">${c.val().user}</b>${c.val().text}</div>`;
+                    const d = c.val();
+                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5 animate-in slide-in-from-bottom-1">
+                        <b class="text-blue-400 text-[9px] block uppercase tracking-tighter">${d.user}</b>
+                        <span class="text-slate-300">${d.text}</span>
+                    </div>`;
                 });
                 box.scrollTop = box.scrollHeight;
             });
@@ -202,7 +234,7 @@
         function sendGlobalChat() {
             const input = document.getElementById('chatInput');
             if(!input.value.trim()) return;
-            db.ref(`comments/${albumId}/global`).push({ user: myName, text: input.value });
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: input.value, ts: Date.now() });
             input.value = "";
         }
 
@@ -212,14 +244,25 @@
             const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
-                await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) });
-                document.getElementById('uploadToast').classList.add('hidden');
+                try {
+                    await fetch(GAS_URL, { 
+                        method: 'POST', 
+                        mode: 'no-cors', // Critical for cross-origin POST to Google
+                        body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) 
+                    });
+                    setTimeout(() => document.getElementById('uploadToast').classList.add('hidden'), 3000);
+                } catch(err) {
+                    alert("Upload failed. Check console.");
+                    document.getElementById('uploadToast').classList.add('hidden');
+                }
             };
         };
 
         function switchTab(t) {
             document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
             document.getElementById('tab-users-content').classList.toggle('hidden', t === 'chat');
+            document.getElementById('btn-chat').classList.toggle('tab-active', t === 'chat');
+            document.getElementById('btn-users').classList.toggle('tab-active', t !== 'chat');
         }
     </script>
 </body>
