@@ -19,6 +19,34 @@
         .nav-btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        /* Standardized Thumbnail Grid */
+#view-feed { 
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
+    gap: 1rem;
+    width: 100%;
+}
+
+@media (min-width: 1024px) { 
+    #view-feed { 
+        grid-template-columns: repeat(3, 1fr); /* 3 columns on desktop */
+    } 
+}
+
+.photo-card { 
+    width: 100%;
+    aspect-ratio: 1 / 1; /* Makes them perfect squares. Use 4/3 or 16/9 for rectangles */
+    overflow: hidden;
+    position: relative;
+    border-radius: 1.5rem; /* Smoother, modern corners */
+}
+
+.photo-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* This crops the image to fill the square without stretching */
+    display: block;
+}
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
@@ -128,23 +156,28 @@
         }
 
         function initGallery() {
-            db.ref('photos/' + albumId).on('value', snap => {
-                const view = document.getElementById('view-feed');
-                view.innerHTML = "";
-                photoList = [];
-                if (!snap.exists()) return;
-                snap.forEach(child => {
-                    const data = child.val();
-                    photoList.push({ id: child.key, url: data.url });
-                    const card = document.createElement('div');
-                    card.className = "photo-card glass p-2 rounded-[2.5rem]";
-                    card.onclick = () => openModal(child.key, data.url);
-                    card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" class="w-full rounded-[2.1rem] block">`;
-                    view.prepend(card);
-                });
-                photoList.reverse();
-                document.getElementById('photo-total').innerText = photoList.length + " Photos";
-            });
+           db.ref('photos/' + albumId).on('value', snap => {
+        const view = document.getElementById('view-feed');
+        view.innerHTML = "";
+        photoList = [];
+        if (!snap.exists()) return;
+
+        snap.forEach(child => {
+            const data = child.val();
+            photoList.push({ id: child.key, url: data.url });
+
+            const card = document.createElement('div');
+            card.className = "photo-card glass transition-all hover:scale-[1.03] cursor-pointer";
+            card.onclick = () => openModal(child.key, data.url);
+            
+            // Using a background-image or an img tag with object-cover works perfectly here
+            card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">`;
+            
+            view.prepend(card);
+        });
+        photoList.reverse();
+        document.getElementById('photo-total').innerText = photoList.length + " Photos";
+    });
         }
 
         function openModal(id, url) {
