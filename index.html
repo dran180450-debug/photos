@@ -3,56 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | App</title>
+    <title>FlashDrive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; }
-        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .masonry { column-count: 2; column-gap: 1rem; }
-        @media (min-width: 768px) { .masonry { column-count: 3; } }
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
-    </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white font-sans">
 
-    <div id="setup-screen" class="hidden h-screen flex items-center justify-center">
-        <div class="glass p-10 rounded-3xl text-center max-w-sm w-full">
-            <h1 class="text-3xl font-bold mb-6">⚡ FlashDrive</h1>
-            <button onclick="createNewAlbum()" class="w-full bg-blue-600 py-4 rounded-xl font-bold">Create New Album</button>
-        </div>
-    </div>
+    <div id="app" class="max-w-4xl mx-auto p-6">
+        <header class="flex justify-between items-center mb-8 bg-slate-800 p-6 rounded-3xl shadow-xl">
+            <h1 class="text-2xl font-black italic tracking-tighter">⚡FLASHDRIVE</h1>
+            <div id="status" class="text-xs font-mono text-slate-400">CONNECTING...</div>
+        </header>
 
-    <div id="app-screen" class="hidden min-h-screen p-6">
-        <nav class="flex justify-between items-center mb-8 glass p-4 rounded-2xl">
-            <h1 class="font-bold">⚡ FlashDrive</h1>
-            <div id="timer" class="text-orange-400 font-mono text-sm"></div>
-        </nav>
-
-        <div class="mb-10 p-10 border-2 border-dashed border-white/10 rounded-3xl text-center">
+        <div class="mb-10 p-10 border-2 border-dashed border-slate-700 rounded-[2.5rem] text-center hover:border-blue-500 transition-colors">
             <input type="file" id="fileInput" class="hidden" accept="image/*">
-            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-8 py-3 rounded-xl font-bold">Upload Photo</button>
-            <p id="upStatus" class="mt-4 text-blue-400 hidden animate-pulse font-bold">UPLOADING TO GOOGLE DRIVE...</p>
+            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-10 py-4 rounded-2xl font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-transform">
+                SELECT PHOTO
+            </button>
+            <p id="upText" class="mt-4 text-blue-400 font-bold hidden animate-pulse">SYNCING TO DRIVE...</p>
         </div>
 
-        <div id="view-feed" class="masonry"></div>
-    </div>
-
-    <div id="photoModal" class="modal" onclick="this.style.display='none'">
-        <div class="glass w-full max-w-4xl h-[80vh] flex flex-col md:flex-row rounded-2xl overflow-hidden" onclick="event.stopPropagation()">
-            <img id="modalImg" class="w-full md:w-2/3 object-contain bg-black" referrerpolicy="no-referrer">
-            <div class="w-full md:w-1/3 p-6 flex flex-col bg-slate-900">
-                <h3 class="font-bold mb-4">Comments</h3>
-                <div id="commentList" class="flex-grow overflow-auto mb-4 space-y-2"></div>
-                <input type="text" id="commentInput" placeholder="Add comment..." class="w-full bg-white/10 p-3 rounded-lg outline-none">
+        <div id="view-feed" class="columns-2 md:columns-3 gap-4 space-y-4">
             </div>
-        </div>
     </div>
 
     <script>
-        const firebaseConfig = {   
-  apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
+        const firebaseConfig = { apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
   authDomain: "photos-a5dfc.firebaseapp.com",
   databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
   projectId: "photos-a5dfc",
@@ -60,79 +37,79 @@
   messagingSenderId: "964574526842",
   appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
   measurementId: "G-1EQJ1D9PRR" };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzLwB-gyNMK-e7mdBxsrJ28JSHZ_ZzoYAua2Li4wtBwMMjae8nkGF-Gjk24QUQ0vFyL/exec";
-        
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzq9XlOFIwEgt3w_9yuaeT-QYIes-c8g8C3nBwM_FVAdOLz4pVznJkgnRMGbWA9eGvy/exec";
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
-        const myUser = "User-" + Math.floor(Math.random() * 900 + 100);
 
+        // 1. Check/Create Album
         if (!albumId) {
-            document.getElementById('setup-screen').classList.remove('hidden');
+            const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
+            db.ref('albums/' + newId).set({ created: Date.now() }).then(() => {
+                window.location.search = '?id=' + newId;
+            });
         } else {
-            document.getElementById('app-screen').classList.remove('hidden');
-            startApp();
+            document.getElementById('status').innerText = "ALBUM: " + albumId.toUpperCase();
+            loadPhotos();
         }
 
-        async function createNewAlbum() {
-            const id = 'alb-' + Math.random().toString(36).substr(2, 7);
-            const expiry = Date.now() + (24 * 60 * 60 * 1000);
-            await db.ref('albums/' + id).set({ expiry });
-            window.location.search = '?id=' + id;
-        }
-
-        function startApp() {
-            // Listen for images in this specific album
+        // 2. Load Photos Listener
+        function loadPhotos() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
-                if(!snap.exists()) {
-                    view.innerHTML = "<p class='text-center text-slate-500 col-span-full'>No photos yet. Upload one!</p>";
+                if (!snap.exists()) {
+                    view.innerHTML = "<p class='text-slate-500 text-center col-span-full py-10'>Album is empty.</p>";
                     return;
                 }
                 snap.forEach(child => {
                     const p = child.val();
                     view.innerHTML += `
-                        <div class="glass rounded-xl overflow-hidden mb-4 cursor-pointer" onclick="openPhoto('${p.url}')">
-                            <img src="${p.url}" referrerpolicy="no-referrer" class="w-full">
-                            <div class="p-2 text-[10px] text-slate-500 uppercase font-bold">By ${p.user}</div>
+                        <div class="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700">
+                            <img src="${p.url}" referrerpolicy="no-referrer" class="w-full h-auto block">
                         </div>`;
                 });
             });
-
-            // Timer logic
-            db.ref('albums/' + albumId + '/expiry').on('value', snap => {
-                const expiry = snap.val();
-                setInterval(() => {
-                    const diff = expiry - Date.now();
-                    document.getElementById('timer').innerText = diff > 0 ? Math.floor(diff/60000) + "m left" : "Expired";
-                }, 1000);
-            });
         }
 
+        // 3. Upload Handler
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
+            if(!file) return;
+
+            document.getElementById('upText').classList.remove('hidden');
+            document.getElementById('uploadBtn').classList.add('hidden');
+
             const reader = new FileReader();
-            document.getElementById('upStatus').classList.remove('hidden');
-            
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myUser })
-                });
-                // Wait for Google to process then hide status
-                setTimeout(() => document.getElementById('upStatus').classList.add('hidden'), 5000);
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({
+                            base64: base64,
+                            mimeType: file.type,
+                            fileName: file.name,
+                            albumId: albumId,
+                            userName: "User-" + Math.floor(Math.random()*999)
+                        })
+                    });
+                    
+                    // Reset UI after a delay to allow Drive to process
+                    setTimeout(() => {
+                        document.getElementById('upText').classList.add('hidden');
+                        document.getElementById('uploadBtn').classList.remove('hidden');
+                        document.getElementById('fileInput').value = "";
+                    }, 4000);
+                } catch(err) {
+                    alert("Sync failed. Check GAS URL.");
+                }
             };
         };
-
-        function openPhoto(url) {
-            document.getElementById('modalImg').src = url;
-            document.getElementById('photoModal').style.display = 'flex';
-        }
     </script>
 </body>
 </html>
