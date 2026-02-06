@@ -12,26 +12,10 @@
         body { background: #020617; color: white; overflow: hidden; height: 100vh; font-family: 'Inter', sans-serif; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
-        
-        /* Fixed Masonry Layout */
-        #view-feed { 
-            display: block;
-            column-count: 2; 
-            column-gap: 1.5rem; 
-            width: 100%;
-        }
+        #view-feed { display: block; column-count: 2; column-gap: 1.5rem; width: 100%; }
         @media (min-width: 1024px) { #view-feed { column-count: 3; } }
-        
-        .photo-card { 
-            display: inline-block; /* Critical for masonry columns */
-            width: 100%;
-            break-inside: avoid; 
-            margin-bottom: 1.5rem; 
-            transition: all 0.3s ease; 
-            cursor: pointer; 
-        }
+        .photo-card { display: inline-block; width: 100%; break-inside: avoid; margin-bottom: 1.5rem; transition: all 0.3s ease; cursor: pointer; }
         .photo-card:hover { transform: scale(1.02); filter: brightness(1.1); }
-        
         .nav-btn { background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; cursor: pointer; }
         .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -59,7 +43,6 @@
             <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs">UPLOAD PHOTO</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
-
         <div id="view-feed"></div>
     </main>
 
@@ -75,7 +58,9 @@
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl font-bold">🚀</button>
             </div>
         </div>
-        <div id="tab-users-content" class="hidden flex-1 p-6"><div id="user-list"></div></div>
+        <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto">
+            <div id="user-list" class="space-y-2"></div>
+        </div>
     </aside>
 
     <div id="photoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
@@ -142,31 +127,21 @@
             db.ref('albums/' + newId).set({ created: Date.now() }).then(() => { window.location.search = '?id=' + newId; });
         }
 
-        // UPDATED GALLERY FUNCTION
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
-                view.innerHTML = ""; // Clear current view
-                photoList = []; // Clear photo tracking list
-                
+                view.innerHTML = "";
+                photoList = [];
                 if (!snap.exists()) return;
-
                 snap.forEach(child => {
                     const data = child.val();
-                    // Add to the tracking list for navigation
                     photoList.push({ id: child.key, url: data.url });
-                    
-                    // Create and Append the photo card
                     const card = document.createElement('div');
                     card.className = "photo-card glass p-2 rounded-[2.5rem]";
                     card.onclick = () => openModal(child.key, data.url);
                     card.innerHTML = `<img src="${data.url}" referrerpolicy="no-referrer" class="w-full rounded-[2.1rem] block">`;
-                    
-                    // prepend adds newest to the top
                     view.prepend(card);
                 });
-                
-                // Keep photoList in sync with the visual order (latest first)
                 photoList.reverse();
                 document.getElementById('photo-total').innerText = photoList.length + " Photos";
             });
@@ -187,6 +162,7 @@
                 snap.forEach(c => {
                     box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl mb-2"><b class="text-blue-400 uppercase text-[9px]">${c.val().user}</b><p>${c.val().text}</p></div>`;
                 });
+                box.scrollTop = box.scrollHeight;
             });
 
             db.ref(`reactions/${albumId}/${id}`).on('value', snap => {
@@ -227,7 +203,13 @@
             document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendGlobalChat(); };
             document.getElementById('pcInput').onkeypress = (e) => { 
                 if(e.key === 'Enter' && e.target.value.trim()) {
-                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: e.target.value });
+                    const text = e.target.value;
+                    // Send to Photo Specific thread
+                    db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: text });
+                    // Send to Main Stream
+                    db.ref(`comments/${albumId}/global`).push({
+                        user: myName, text: `💬: "${text}"`, photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src, ts: Date.now()
+                    });
                     e.target.value = "";
                 }
             };
@@ -241,17 +223,17 @@
         }
 
         function initGlobalChat() {
-            db.ref(`comments/${albumId}/global`).limitToLast(20).on('value', snap => {
+            db.ref(`comments/${albumId}/global`).limitToLast(25).on('value', snap => {
                 const box = document.getElementById('global-chat');
                 box.innerHTML = "";
                 snap.forEach(c => {
                     const d = c.val();
                     const hasPhoto = d.photoUrl && d.photoId;
-                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs">
+                    box.innerHTML += `<div class="glass p-3 rounded-xl text-xs border border-white/5">
                         <b class="text-blue-400 uppercase text-[9px] block mb-1">${d.user}</b>
                         <div class="flex gap-3">
-                            ${hasPhoto ? `<img src="${d.photoUrl}" class="w-8 h-8 rounded object-cover cursor-pointer" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}
-                            <p class="text-slate-300">${d.text}</p>
+                            ${hasPhoto ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80" onclick="openModal('${d.photoId}', '${d.photoUrl}')">` : ''}
+                            <p class="text-slate-300 flex-1">${d.text}</p>
                         </div>
                     </div>`;
                 });
@@ -263,13 +245,27 @@
             const ref = db.ref(`presence/${albumId}/${myName}`);
             ref.set({ name: myName, ts: Date.now() });
             ref.onDisconnect().remove();
-            db.ref(`presence/${albumId}`).on('value', snap => { document.getElementById('online-count').innerText = snap.numChildren() || 0; });
+
+            db.ref(`presence/${albumId}`).on('value', snap => {
+                const count = snap.numChildren() || 0;
+                document.getElementById('online-count').innerText = count;
+                const list = document.getElementById('user-list');
+                list.innerHTML = "";
+                snap.forEach(u => {
+                    list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl border border-white/5">
+                        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        <span class="text-[10px] font-bold uppercase tracking-widest">${u.val().name}</span>
+                    </div>`;
+                });
+            });
         }
 
         function closeModal() { document.getElementById('photoModal').classList.add('hidden'); }
         function switchTab(t) {
             document.getElementById('tab-chat-content').classList.toggle('hidden', t !== 'chat');
             document.getElementById('tab-users-content').classList.toggle('hidden', t === 'chat');
+            document.getElementById('btn-chat').classList.toggle('tab-active', t === 'chat');
+            document.getElementById('btn-users').classList.toggle('tab-active', t !== 'chat');
         }
 
         document.getElementById('fileInput').onchange = async (e) => {
