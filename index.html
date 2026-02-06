@@ -35,12 +35,20 @@
     </div>
 
     <main class="flex-1 h-full overflow-y-auto p-6 md:p-12 custom-scrollbar">
-        <header class="flex justify-between items-center mb-10">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
             <div>
                 <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter uppercase">⚡FlashDrive</h1>
-                <p id="album-tag" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Live Feed</p>
+                <p id="album-tag" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 italic">Album: Loading...</p>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-500/20">Upload</button>
+            
+            <div class="flex gap-3 w-full md:w-auto">
+                <button onclick="createNewAlbum()" class="flex-1 md:flex-none border border-white/10 hover:bg-white/5 text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">
+                    + New Album
+                </button>
+                <button onclick="document.getElementById('fileInput').click()" class="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all">
+                    Upload
+                </button>
+            </div>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
 
@@ -54,8 +62,7 @@
         </div>
 
         <div id="content-chat" class="flex-1 flex flex-col overflow-hidden">
-            <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                </div>
+            <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar"></div>
             <div class="p-6 bg-slate-900/50 flex gap-2">
                 <input id="chatInput" type="text" placeholder="Say something..." class="flex-1 bg-white/5 border border-white/10 rounded-xl p-4 text-xs outline-none focus:border-blue-500/50">
                 <button id="sendBtn" class="bg-blue-600 px-5 rounded-xl font-bold">🚀</button>
@@ -84,7 +91,17 @@
 
         document.getElementById('album-tag').innerText = "Album: " + albumId;
 
-        // --- 1. GALLERY LOGIC ---
+        // --- NEW ALBUM FUNCTION ---
+        function createNewAlbum() {
+            const name = prompt("Enter a name for the new album:");
+            if (name && name.trim().length > 0) {
+                // Clean the name of spaces/special chars for the URL
+                const cleanName = name.replace(/[^a-zA-Z0-9]/g, '-');
+                window.location.search = `?id=${cleanName}`;
+            }
+        }
+
+        // --- GALLERY LOGIC ---
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
@@ -103,7 +120,7 @@
             });
         }
 
-        // --- 2. IMPROVED COMMENT LOGIC ---
+        // --- COMMENT LOGIC ---
         function initGlobalChat() {
             const chatRef = db.ref(`comments/${albumId}/global`);
             chatRef.limitToLast(50).on('value', snap => {
@@ -124,26 +141,17 @@
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
             if (!text) return;
-
-            db.ref(`comments/${albumId}/global`).push({
-                user: myName,
-                text: text,
-                ts: Date.now()
-            });
+            db.ref(`comments/${albumId}/global`).push({ user: myName, text: text, ts: Date.now() });
             input.value = "";
         }
 
-        // Add Event Listener for Enter Key and Send Button
         document.getElementById('sendBtn').onclick = sendGlobalChat;
-        document.getElementById('chatInput').onkeypress = (e) => {
-            if (e.key === 'Enter') sendGlobalChat();
-        };
+        document.getElementById('chatInput').onkeypress = (e) => { if (e.key === 'Enter') sendGlobalChat(); };
 
-        // --- 3. ONLINE PRESENCE ---
+        // --- ONLINE PRESENCE ---
         function initPresence() {
             const ref = db.ref(`presence/${albumId}/${myName}`);
             ref.set({ name: myName }).onDisconnect().remove();
-            
             db.ref(`presence/${albumId}`).on('value', snap => {
                 document.getElementById('online-count').innerText = snap.numChildren() || 0;
                 const list = document.getElementById('user-list');
@@ -154,7 +162,6 @@
             });
         }
 
-        // --- 4. TABS & UPLOADS ---
         function switchTab(tab) {
             document.getElementById('content-chat').classList.toggle('hidden', tab !== 'chat');
             document.getElementById('content-users').classList.toggle('hidden', tab !== 'users');
@@ -168,6 +175,7 @@
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
+                // Note: The Google Script doPost will create the folder if it doesn't exist
                 await fetch(GAS_URL, { 
                     method: 'POST', mode: 'no-cors',
                     body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName }) 
@@ -175,7 +183,6 @@
             };
         };
 
-        // Initialize Everything
         initGallery();
         initPresence();
         initGlobalChat();
