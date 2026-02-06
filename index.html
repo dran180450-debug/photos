@@ -55,7 +55,12 @@
         <header class="flex justify-between items-center mb-10">
             <div>
                 <h1 class="text-4xl font-black italic text-blue-500 tracking-tighter">⚡FLASHDRIVE</h1>
-                <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-[0.2em]"></p>
+                <div class="flex items-center gap-3 mt-1">
+                    <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]"></p>
+                    <button onclick="copyAlbumLink()" class="text-[9px] bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 rounded-md text-slate-400 font-bold transition-all">
+                        🔗 COPY LINK
+                    </button>
+                </div>
             </div>
             <button onclick="document.getElementById('fileInput').click()" 
                     class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-2xl shadow-blue-600/40 active:scale-95 transition-all">
@@ -69,7 +74,9 @@
     <aside class="w-full md:w-[420px] h-screen glass border-l border-white/5 flex flex-col z-10">
         <div class="flex border-b border-white/5">
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tracking-widest tab-active">Activity Stream</button>
-            <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">Online</button>
+            <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Online (<span id="online-count">0</span>)
+            </button>
         </div>
 
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
@@ -98,7 +105,6 @@
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
         
-        // PASTE YOUR GOOGLE WEB APP URL HERE
         const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec";
 
         firebase.initializeApp(firebaseConfig);
@@ -119,6 +125,19 @@
             initGlobalChat();
         }
 
+        function copyAlbumLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                const btn = document.querySelector('button[onclick="copyAlbumLink()"]');
+                const oldText = btn.innerText;
+                btn.innerText = "✅ COPIED!";
+                btn.classList.add('text-green-500');
+                setTimeout(() => {
+                    btn.innerText = oldText;
+                    btn.classList.remove('text-green-500');
+                }, 2000);
+            });
+        }
+
         function switchTab(type) {
             const isChat = type === 'chat';
             document.getElementById('tab-chat-content').classList.toggle('hidden', !isChat);
@@ -132,9 +151,14 @@
             const ref = db.ref(`presence/${albumId}/${myName}`);
             ref.set({ name: myName, ts: Date.now() });
             ref.onDisconnect().remove();
+            
             db.ref(`presence/${albumId}`).on('value', snap => {
                 const list = document.getElementById('user-list');
+                const countSpan = document.getElementById('online-count');
                 list.innerHTML = "";
+                const count = snap.numChildren() || 0;
+                countSpan.innerText = count;
+                
                 snap.forEach(u => {
                     list.innerHTML += `<div class="flex items-center gap-3 p-4 glass rounded-2xl border-white/5 mb-2">
                         <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div>
@@ -191,18 +215,17 @@
 
         function closeModal() {
             document.getElementById('photoModal').classList.add('hidden');
-            db.ref(`comments/${albumId}/${currentPhotoId}`).off();
-            db.ref(`reactions/${albumId}/${currentPhotoId}`).off();
+            if(currentPhotoId) {
+                db.ref(`comments/${albumId}/${currentPhotoId}`).off();
+                db.ref(`reactions/${albumId}/${currentPhotoId}`).off();
+            }
         }
 
         function sendReaction(emoji) {
             db.ref(`reactions/${albumId}/${currentPhotoId}/${emoji}/${myName}`).set(true);
             db.ref(`comments/${albumId}/global`).push({
-                user: myName,
-                text: `reacted ${emoji} to this photo`,
-                photoId: currentPhotoId,
-                photoUrl: document.getElementById('modalImg').src,
-                ts: Date.now()
+                user: myName, text: `reacted ${emoji} to this photo`,
+                photoId: currentPhotoId, photoUrl: document.getElementById('modalImg').src, ts: Date.now()
             });
         }
 
@@ -213,19 +236,18 @@
                 snap.forEach(c => {
                     const d = c.val();
                     const hasPhoto = d.photoUrl && d.photoId;
-                    
                     box.innerHTML += `
                         <div class="flex flex-col gap-1.5 animate-in fade-in duration-300">
                             <div class="flex items-center gap-2 ml-1">
                                 <span class="text-[9px] font-black text-blue-500 uppercase">${d.user}</span>
-                                <span class="text-[8px] text-slate-600">${new Date(d.ts || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                <span class="text-[8px] text-slate-600">${new Date(d.ts || Date.now()).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                             </div>
                             <div onclick="${hasPhoto ? `openModal('${d.photoId}', '${d.photoUrl}')` : ''}" 
                                  class="activity-bubble glass p-4 rounded-2xl rounded-tl-none border-white/5 flex gap-4 items-start ${hasPhoto ? 'cursor-pointer' : ''}">
                                 ${hasPhoto ? `<img src="${d.photoUrl}" referrerpolicy="no-referrer" class="w-12 h-12 rounded-xl object-cover shadow-lg flex-shrink-0">` : ''}
                                 <div class="flex-1">
                                     <p class="text-[12px] text-slate-300 leading-tight">${d.text}</p>
-                                    ${hasPhoto ? `<span class="text-[8px] font-black text-blue-400/50 uppercase mt-2 block tracking-widest">TAP TO VIEW</span>` : ''}
+                                    ${hasPhoto ? `<span class="text-[8px] font-black text-blue-400/50 uppercase mt-2 block tracking-widest">VIEW PHOTO</span>` : ''}
                                 </div>
                             </div>
                         </div>`;
@@ -246,13 +268,7 @@
                 const val = e.target.value;
                 const url = document.getElementById('modalImg').src;
                 db.ref(`comments/${albumId}/${currentPhotoId}`).push({ user: myName, text: val });
-                db.ref(`comments/${albumId}/global`).push({ 
-                    user: myName, 
-                    text: `💬 Comment: "${val}"`, 
-                    photoId: currentPhotoId, 
-                    photoUrl: url,
-                    ts: Date.now()
-                });
+                db.ref(`comments/${albumId}/global`).push({ user: myName, text: `💬 Comment: "${val}"`, photoId: currentPhotoId, photoUrl: url, ts: Date.now() });
                 e.target.value = "";
             }
         };
@@ -265,8 +281,7 @@
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
                 fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
+                    method: 'POST', mode: 'no-cors',
                     body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName })
                 });
             };
