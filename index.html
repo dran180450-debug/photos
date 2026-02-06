@@ -20,9 +20,24 @@
         ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
         .activity-bubble { transition: all 0.2s ease; }
         .activity-bubble:hover { background: rgba(59, 130, 246, 0.08); border-color: rgba(59, 130, 246, 0.2); }
+        
+        /* Loading Spinner */
+        .spinner {
+            width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%; border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
+
+    <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] hidden">
+        <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3 border-blue-500/30 shadow-2xl shadow-blue-500/20">
+            <div class="spinner"></div>
+            <span class="text-xs font-black uppercase tracking-widest text-blue-400">Processing Photo...</span>
+        </div>
+    </div>
 
     <div id="photoModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-6xl w-full h-[85vh] rounded-[3rem] overflow-hidden flex flex-col md:flex-row">
@@ -63,9 +78,9 @@
                     </button>
                 </div>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" 
-                    class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-2xl shadow-blue-600/40 active:scale-95 transition-all">
-                UPLOAD
+            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-2xl font-black text-xs shadow-2xl shadow-blue-600/40 active:scale-95 transition-all flex items-center gap-3">
+                <span id="btnText">UPLOAD</span>
             </button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
@@ -125,13 +140,25 @@
             initGallery();
             initGlobalChat();
             
-            // Fix: Main Chat Enter Key
             document.getElementById('chatInput').addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') {
-                    e.preventDefault();
-                    sendGlobalChat();
-                }
+                if(e.key === 'Enter') { e.preventDefault(); sendGlobalChat(); }
             });
+        }
+
+        function toggleLoading(isLoading) {
+            const btnText = document.getElementById('btnText');
+            const toast = document.getElementById('uploadToast');
+            const btn = document.getElementById('uploadBtn');
+            
+            if(isLoading) {
+                btnText.innerHTML = '<div class="spinner"></div>';
+                btn.classList.add('opacity-70', 'pointer-events-none');
+                toast.classList.remove('hidden');
+            } else {
+                btnText.innerText = 'UPLOAD';
+                btn.classList.remove('opacity-70', 'pointer-events-none');
+                toast.classList.add('hidden');
+            }
         }
 
         function copyAlbumLink() {
@@ -148,7 +175,6 @@
             document.getElementById('tab-users-content').classList.toggle('hidden', isChat);
             document.getElementById('btn-chat').classList.toggle('tab-active', isChat);
             document.getElementById('btn-users').classList.toggle('tab-active', !isChat);
-            document.getElementById('btn-users').classList.toggle('text-slate-500', isChat);
         }
 
         function initPresence() {
@@ -159,8 +185,7 @@
                 const list = document.getElementById('user-list');
                 const countSpan = document.getElementById('online-count');
                 list.innerHTML = "";
-                const count = snap.numChildren() || 0;
-                countSpan.innerText = count;
+                countSpan.innerText = snap.numChildren() || 0;
                 snap.forEach(u => {
                     list.innerHTML += `<div class="flex items-center gap-3 p-4 glass rounded-2xl border-white/5 mb-2">
                         <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]"></div>
@@ -177,7 +202,6 @@
                 view.innerHTML = "";
                 const count = snap.numChildren() || 0;
                 totalSpan.innerText = count + (count === 1 ? " Photo" : " Photos");
-                
                 snap.forEach(child => {
                     const data = child.val();
                     const card = document.createElement('div');
@@ -193,7 +217,6 @@
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
-            
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 const box = document.getElementById('photoComments');
                 box.innerHTML = "";
@@ -205,7 +228,6 @@
                 });
                 box.scrollTop = box.scrollHeight;
             });
-
             db.ref(`reactions/${albumId}/${id}`).on('value', snap => {
                 const rBox = document.getElementById('reaction-counts');
                 rBox.innerHTML = "";
@@ -242,7 +264,6 @@
                 snap.forEach(c => {
                     const d = c.val();
                     const hasPhoto = d.photoUrl && d.photoId;
-                    // FIX: Removed the stray "}" from the template literal below
                     box.innerHTML += `
                         <div class="flex flex-col gap-1.5 animate-in fade-in duration-300">
                             <div class="flex items-center gap-2 ml-1">
@@ -270,7 +291,6 @@
             input.value = "";
         }
 
-        // Fix: Thread Chat Enter Key
         document.getElementById('pcInput').onkeypress = (e) => {
             if(e.key === 'Enter' && e.target.value.trim()) {
                 e.preventDefault();
@@ -285,14 +305,25 @@
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
             if(!file) return;
+            
+            toggleLoading(true); // Start Spinner
+            
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
-                fetch(GAS_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName })
-                });
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST', mode: 'no-cors',
+                        body: JSON.stringify({ base64, mimeType: file.type, fileName: file.name, albumId, userName: myName })
+                    });
+                    // Note: 'no-cors' doesn't return a readable response, so we wait 2 seconds 
+                    // or until the DB updates. For best UX, we'll clear after 3 seconds.
+                    setTimeout(() => toggleLoading(false), 3000);
+                } catch (err) {
+                    console.error(err);
+                    toggleLoading(false);
+                }
             };
         };
     </script>
