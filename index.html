@@ -3,65 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | App</title>
+    <title>FlashDrive | Debug Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background: #0f172a; color: white; }
-        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        body { background: #020617; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
         #view-feed { column-count: 2; column-gap: 1rem; }
         @media (min-width: 768px) { #view-feed { column-count: 3; } }
-        .photo-card { break-inside: avoid; margin-bottom: 1rem; animation: fadeInUp 0.5s ease forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card { break-inside: avoid; margin-bottom: 1rem; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="p-4">
 
-    <div class="max-w-5xl mx-auto p-6">
-        <header class="flex justify-between items-center mb-8 glass p-6 rounded-[2rem]">
-            <h1 class="text-2xl font-black italic text-blue-500 tracking-tighter">⚡FLASHDRIVE</h1>
-            <div id="album-tag" class="text-[10px] font-mono bg-blue-500/10 text-blue-400 px-4 py-2 rounded-full border border-blue-500/20 uppercase tracking-widest">
-                Connecting...
-            </div>
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8 glass p-6 rounded-3xl">
+            <h1 class="text-xl font-black italic text-blue-500">⚡FLASHDRIVE</h1>
+            <div id="status" class="text-[10px] font-mono text-slate-500 uppercase">Checking Connection...</div>
         </header>
 
-        <div class="mb-12 p-12 border-2 border-dashed border-slate-800 rounded-[3rem] text-center hover:border-blue-500/30 transition-all">
+        <div class="mb-8 p-10 border-2 border-dashed border-slate-800 rounded-[2rem] text-center">
             <input type="file" id="fileInput" class="hidden" accept="image/*">
-            <div id="idle-ui">
-                <button onclick="document.getElementById('fileInput').click()" 
-                        class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-black shadow-2xl shadow-blue-600/30 active:scale-95 transition-all">
-                    ADD PHOTO
-                </button>
-                <p class="text-slate-500 text-xs mt-4 font-bold uppercase tracking-widest">Syncing to Cloud Drive</p>
-            </div>
-            <div id="loader" class="hidden py-4 flex flex-col items-center gap-4">
-                <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-                <span class="text-blue-400 font-black text-xs animate-pulse">WRITING TO DATABASE...</span>
-            </div>
+            <button id="upBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-8 py-3 rounded-xl font-bold">SELECT IMAGE</button>
+            <div id="loader" class="hidden mt-4 animate-pulse text-blue-400 font-bold text-xs">UPLOADING...</div>
         </div>
 
-        <div id="view-feed">
-            </div>
+        <div id="view-feed"></div>
+
+        <div class="mt-20 p-4 bg-black/50 rounded-xl border border-red-900/30 font-mono text-[10px]">
+            <p class="text-red-500 mb-2 font-bold uppercase">System Debug Logs:</p>
+            <div id="debug-logs" class="text-slate-400 space-y-1"></div>
+        </div>
     </div>
 
     <script>
         const firebaseConfig = { 
             apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
-            authDomain: "photos-a5dfc.firebaseapp.com",
             databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
             projectId: "photos-a5dfc",
-            storageBucket: "photos-a5dfc.firebasestorage.app",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
         
-        // PASTE YOUR NEW DEPLOYMENT URL HERE
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby9DvrUvgFRQfQkMUOeiTI-QeoogOGbaY1SaJemIrDlZd37qZD41cn6XDrZviPjxJ0e/exec";
+        // REPLACE WITH YOUR NEWEST DEPLOY URL
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxbBl8rkk65_i1qGloflr01Ix1nWnyLJRZZJ1uKBV-HlR9XlKBCwcQUTuftiKeby-r_/exec";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
+
+        function log(msg) {
+            const d = document.getElementById('debug-logs');
+            d.innerHTML += `<div>> ${msg}</div>`;
+        }
 
         if (!albumId) {
             const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
@@ -69,36 +64,26 @@
                 window.location.search = '?id=' + newId;
             });
         } else {
-            document.getElementById('album-tag').innerText = "Album: " + albumId;
-            initGallery();
+            document.getElementById('status').innerText = "Album: " + albumId;
+            log("Album Initialized: " + albumId);
+            startSync();
         }
 
-        function initGallery() {
+        function startSync() {
             db.ref('photos/' + albumId).on('value', snap => {
+                log("Database Update Detected. Found " + (snap.numChildren() || 0) + " photos.");
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
-                
                 if (!snap.exists()) {
-                    view.innerHTML = "<p class='col-span-full text-center text-slate-600 py-20 font-bold'>EMPTY ALBUM</p>";
+                    view.innerHTML = "<p class='col-span-full text-center py-10 text-slate-600'>Empty</p>";
                     return;
                 }
-
                 snap.forEach(child => {
-                    const data = child.val();
-                    const card = document.createElement('div');
-                    card.className = "photo-card glass rounded-3xl overflow-hidden p-2";
-                    card.innerHTML = `
-                        <img src="${data.url}" 
-                             referrerpolicy="no-referrer"
-                             class="w-full h-auto rounded-2xl block hover:opacity-80 transition-opacity cursor-pointer"
-                             onerror="this.onerror=null; setTimeout(() => { this.src='${data.url}?t=' + Date.now(); }, 2500);"
-                             onclick="window.open('${data.url}', '_blank')">
-                        <div class="p-3 text-[9px] font-black text-slate-500 uppercase flex justify-between">
-                            <span>BY ${data.user}</span>
-                            <span class="text-blue-500">View Original</span>
-                        </div>
-                    `;
-                    view.prepend(card);
+                    const p = child.val();
+                    const div = document.createElement('div');
+                    div.className = "card glass p-2 rounded-2xl";
+                    div.innerHTML = `<img src="${p.url}" referrerpolicy="no-referrer" class="w-full rounded-xl">`;
+                    view.prepend(div);
                 });
             });
         }
@@ -106,15 +91,18 @@
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
             if(!file) return;
-
+            log("File selected: " + file.name);
             document.getElementById('loader').classList.remove('hidden');
-            document.getElementById('idle-ui').classList.add('hidden');
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
+                log("Sending to Google Script...");
+                
                 try {
+                    // Note: fetch will return an error because of CORS, 
+                    // but the Google Script will still run!
                     await fetch(GAS_URL, {
                         method: 'POST',
                         mode: 'no-cors',
@@ -123,20 +111,17 @@
                             mimeType: file.type,
                             fileName: file.name,
                             albumId: albumId,
-                            userName: "User-" + Math.floor(Math.random() * 999)
+                            userName: "User-" + Math.floor(Math.random()*99)
                         })
                     });
                     
+                    log("Script PINGED. Waiting for Firebase to reflect changes...");
                     setTimeout(() => {
                         document.getElementById('loader').classList.add('hidden');
-                        document.getElementById('idle-ui').classList.remove('hidden');
                         document.getElementById('fileInput').value = "";
-                    }, 4000);
-
+                    }, 5000);
                 } catch(err) {
-                    alert("Sync Error");
-                    document.getElementById('loader').classList.add('hidden');
-                    document.getElementById('idle-ui').classList.remove('hidden');
+                    log("Fetch Error: " + err.message);
                 }
             };
         };
