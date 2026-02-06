@@ -134,37 +134,66 @@
             }
         }
 
-        async function toggleMasterList() {
-            const panel = document.getElementById('masterListOverlay');
-            panel.classList.toggle('hidden');
-            if (!panel.classList.contains('hidden')) {
-                const tbody = document.getElementById('masterTableBody');
-                tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center opacity-50'>Scanning Database...</td></tr>";
-                
-                const albumsSnap = await db.ref('albums').once('value');
-                tbody.innerHTML = "";
-                
-                albumsSnap.forEach(async child => {
-                    const id = child.key;
-                    const photosSnap = await db.ref(`photos/${id}`).once('value');
-                    const onlineSnap = await db.ref(`presence/${id}`).once('value');
-                    
-                    const pCount = photosSnap.numChildren() || 0;
-                    const uCount = onlineSnap.numChildren() || 0;
-
-                    const row = `
-                        <tr class="border-t border-white/5 hover:bg-white/[0.02]">
-                            <td class="p-6 font-bold text-blue-400 cursor-pointer" onclick="window.open('?id=${id}', '_blank')">${id}</td>
-                            <td class="p-6 text-center font-mono">${pCount}</td>
-                            <td class="p-6 text-center"><span class="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-[10px]">${uCount} Active</span></td>
-                            <td class="p-6 text-right">
-                                <button onclick="deleteFullAlbum('${id}')" class="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-[10px] font-black transition-all">DELETE ALBUM</button>
-                            </td>
-                        </tr>`;
-                    tbody.innerHTML += row;
-                });
+       async function toggleMasterList() {
+    const panel = document.getElementById('masterListOverlay');
+    panel.classList.toggle('hidden');
+    
+    if (!panel.classList.contains('hidden')) {
+        const tbody = document.getElementById('masterTableBody');
+        tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center opacity-50'>Scanning Database...</td></tr>";
+        
+        // 1. Fetch all album keys
+        db.ref('albums').once('value', (allAlbumsSnap) => {
+            tbody.innerHTML = ""; // Clear the loading message
+            
+            if (!allAlbumsSnap.exists()) {
+                tbody.innerHTML = "<tr><td colspan='4' class='p-10 text-center'>No albums found.</td></tr>";
+                return;
             }
-        }
+
+            // 2. Loop through every album ID found
+            allAlbumsSnap.forEach((albumSnap) => {
+                const id = albumSnap.key;
+                
+                // Create a row placeholder for this album
+                const rowId = `row-${id}`;
+                tbody.innerHTML += `
+                    <tr id="${rowId}" class="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                        <td class="p-6 font-bold text-blue-400 cursor-pointer hover:underline" onclick="window.open('?id=${id}', '_blank')">
+                            ${id} ${id === albumId ? '<span class="text-[8px] bg-blue-500/20 px-2 py-1 rounded ml-2">ACTIVE</span>' : ''}
+                        </td>
+                        <td id="photos-${id}" class="p-6 text-center font-mono opacity-50">...</td>
+                        <td id="online-${id}" class="p-6 text-center opacity-50">...</td>
+                        <td class="p-6 text-right">
+                            <button onclick="deleteFullAlbum('${id}')" class="bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-[10px] font-black transition-all">
+                                DELETE ALBUM
+                            </button>
+                        </td>
+                    </tr>`;
+
+                // 3. Live-fetch the counts for THIS specific row
+                // Get Photo Count
+                db.ref(`photos/${id}`).on('value', pSnap => {
+                    const countEl = document.getElementById(`photos-${id}`);
+                    if (countEl) {
+                        countEl.innerText = pSnap.numChildren() || 0;
+                        countEl.classList.remove('opacity-50');
+                    }
+                });
+
+                // Get Online User Count
+                db.ref(`presence/${id}`).on('value', uSnap => {
+                    const onlineEl = document.getElementById(`online-${id}`);
+                    if (onlineEl) {
+                        const count = uSnap.numChildren() || 0;
+                        onlineEl.innerHTML = `<span class="${count > 0 ? 'text-green-500' : 'text-slate-600'} font-bold">${count} Users</span>`;
+                        onlineEl.classList.remove('opacity-50');
+                    }
+                });
+            });
+        });
+    }
+}
 
         function deleteFullAlbum(id) {
             if (confirm(`CRITICAL: Are you sure you want to delete Album ${id}? All photos and comments will be lost forever.`)) {
