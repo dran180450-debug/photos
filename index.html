@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDrive | Admin Edition 2026</title>
+    <title>FlashDrive | Super Admin 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -13,14 +13,12 @@
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
         
-        /* Grid Layout */
         #view-feed { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; width: 100%; }
         @media (min-width: 1024px) { #view-feed { grid-template-columns: repeat(3, 1fr); } }
         
         .photo-card { width: 100%; aspect-ratio: 1 / 1; overflow: hidden; position: relative; border-radius: 1.5rem; }
         .photo-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
         
-        /* Zoom Effects */
         .zoom-container { cursor: zoom-in; transition: transform 0.3s ease; }
         .is-zoomed { cursor: zoom-out; transform: scale(2.5); z-index: 100; }
         
@@ -51,11 +49,11 @@
                 <div class="flex items-center gap-3 mt-2">
                     <p id="album-id-tag" class="text-[10px] text-slate-500 font-bold uppercase"></p>
                     <span id="photo-total" class="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded-md font-bold uppercase">0 Photos</span>
-                    <button id="muteBtn" onclick="toggleMute()" class="text-[10px] text-slate-400 hover:text-white transition-all">🔊 SOUND ON</button>
-                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all ml-2">🔒 ADMIN</button>
+                    <button id="muteBtn" onclick="toggleMute()" class="text-[10px] text-slate-400 hover:text-white transition-all uppercase">🔊 Sound On</button>
+                    <button id="adminLoginBtn" onclick="adminLogin()" class="text-[10px] text-slate-600 hover:text-red-400 transition-all ml-2 uppercase">🔒 Admin</button>
                 </div>
             </div>
-            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs">UPLOAD PHOTO</button>
+            <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
         <div id="view-feed"></div>
@@ -66,15 +64,23 @@
             <button onclick="switchTab('chat')" id="btn-chat" class="flex-1 py-6 text-[10px] font-black uppercase tab-active">Activity Stream</button>
             <button onclick="switchTab('users')" id="btn-users" class="flex-1 py-6 text-[10px] font-black uppercase text-slate-500">Online (<span id="online-count">0</span>)</button>
         </div>
+        
         <div id="tab-chat-content" class="flex-1 flex flex-col overflow-hidden">
             <div id="global-chat" class="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"></div>
             <div class="p-6 bg-white/[0.02] border-t border-white/5 flex gap-3">
-                <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none focus:border-blue-500">
+                <input id="chatInput" type="text" placeholder="Type a message..." class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 text-xs outline-none">
                 <button onclick="sendGlobalChat()" class="bg-blue-600 px-5 rounded-2xl">🚀</button>
             </div>
         </div>
+
         <div id="tab-users-content" class="hidden flex-1 p-6 overflow-y-auto custom-scrollbar">
-            <div id="user-list" class="space-y-2"></div>
+            <h3 class="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest">Active Users</h3>
+            <div id="user-list" class="space-y-2 mb-10"></div>
+            
+            <div id="admin-links-section" class="hidden">
+                <h3 class="text-[10px] font-black text-red-500 uppercase mb-4 tracking-widest">Admin Photo Registry</h3>
+                <div id="admin-url-list" class="space-y-2"></div>
+            </div>
         </div>
     </aside>
 
@@ -120,8 +126,8 @@
             projectId: "photos-a5dfc",
             appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3"
         };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; // Update with your actual URL
-        const MASTER_PASS = "admin1988"; // CHANGE THIS TO YOUR SECRET PASSWORD
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyjLFyb0FD2dbSUFA7yalfG9NQemMA3Qy2D6Xg_daqN575hxf9xB1ztmCo-Vw-g9_o/exec"; 
+        const MASTER_PASS = "admin1988";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -156,18 +162,23 @@
             if (pass === MASTER_PASS) {
                 isAdmin = true;
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                document.getElementById('admin-links-section').classList.remove('hidden');
                 document.getElementById('adminLoginBtn').innerText = "🔓 ADMIN ACTIVE";
                 document.getElementById('adminLoginBtn').classList.add('text-green-500');
-                // Refresh gallery to show delete buttons on cards
-                initGallery();
+                initGallery(); // Refresh for buttons
             } else {
                 alert("Incorrect password.");
             }
         }
 
+        function copyLink(url) {
+            navigator.clipboard.writeText(url);
+            alert("URL Copied to clipboard!");
+        }
+
         function deletePhoto(id) {
             if (!isAdmin || !id) return;
-            if (confirm("Permanently delete this photo?")) {
+            if (confirm("Permanently delete photo?")) {
                 db.ref(`photos/${albumId}/${id}`).remove();
                 db.ref(`comments/${albumId}/${id}`).remove();
                 db.ref(`reactions/${albumId}/${id}`).remove();
@@ -178,26 +189,42 @@
         function initGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
+                const urlRegistry = document.getElementById('admin-url-list');
                 const countBefore = photoList.length;
+                
                 view.innerHTML = "";
+                urlRegistry.innerHTML = "";
                 photoList = [];
+                
                 snap.forEach(child => {
                     const data = child.val();
                     photoList.push({ id: child.key, url: data.url });
+                    
+                    // Main Feed Card
                     const card = document.createElement('div');
                     card.className = "photo-card glass hover:scale-[1.03] transition-all cursor-pointer";
+                    const adminUI = isAdmin ? "" : "hidden";
                     
-                    const deleteBtnClass = isAdmin ? "" : "hidden";
                     card.innerHTML = `
                         <img src="${data.url}" referrerpolicy="no-referrer" loading="lazy">
-                        <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" 
-                                class="admin-only ${deleteBtnClass} absolute top-3 right-3 bg-red-600 hover:bg-red-700 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white font-bold">
-                                ✕
-                        </button>`;
+                        <div class="admin-only ${adminUI} absolute top-2 right-2 flex flex-col gap-2">
+                            <button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="bg-red-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white font-bold">✕</button>
+                            <button onclick="event.stopPropagation(); copyLink('${data.url}')" class="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center shadow-xl text-white text-[10px]">🔗</button>
+                        </div>`;
                     
                     card.onclick = () => openModal(child.key, data.url);
                     view.prepend(card);
+
+                    // Admin Registry Entry
+                    if(isAdmin) {
+                        urlRegistry.innerHTML += `
+                        <div class="bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1 overflow-hidden">
+                            <span class="text-[8px] text-slate-500 font-mono truncate">${data.url}</span>
+                            <button onclick="copyLink('${data.url}')" class="text-[9px] text-blue-400 text-left font-bold uppercase">Copy URL</button>
+                        </div>`;
+                    }
                 });
+                
                 photoList.reverse();
                 document.getElementById('photo-total').innerText = photoList.length + " Photos";
                 if (!isInitialPhotos && photoList.length > countBefore && !isMuted) {
@@ -216,7 +243,6 @@
             currentPhotoId = id;
             document.getElementById('modalImg').src = url;
             document.getElementById('photoModal').classList.remove('hidden');
-            
             if(isAdmin) document.getElementById('modalDeleteBtn').classList.remove('hidden');
 
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
