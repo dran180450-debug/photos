@@ -21,8 +21,10 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .reaction-btn { transition: transform 0.2s; cursor: pointer; }
         .reaction-btn:hover { transform: scale(1.3); }
-        .nav-btn { background: rgba(0,0,0,0.5); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .nav-btn { background: rgba(0,0,0,0.6); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1); }
         .nav-btn:hover { background: #facc15; color: black; }
+        /* Header Frame for Uploader */
+        .user-frame { background: rgba(15, 23, 42, 0.8); border-bottom: 1px solid rgba(250, 204, 21, 0.3); padding: 12px 24px; width: 100%; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -47,7 +49,7 @@
             <button onclick="document.getElementById('fileInput').click()" class="bg-yellow-500 text-black px-8 py-4 rounded-2xl font-black text-xs uppercase shadow-lg shadow-yellow-500/20">Upload Photo</button>
             <input type="file" id="fileInput" class="hidden" accept="image/*">
         </header>
-        <div id="view-feed"></div>
+        <div id="view-feed" class="pb-10"></div>
     </main>
 
     <aside class="w-full md:w-[380px] h-full glass border-l border-white/5 flex flex-col">
@@ -65,7 +67,7 @@
                 </div>
                 <div class="flex justify-between items-center px-1">
                     <span class="text-[9px] text-slate-500 uppercase font-bold">Posting as: <span id="display-name" class="text-yellow-400 cursor-pointer" onclick="changeName()"></span></span>
-                    <button onclick="changeName()" class="text-[9px] text-slate-400 hover:text-white uppercase font-bold">Change</button>
+                    <button onclick="changeName()" class="text-[9px] text-slate-400 hover:text-white uppercase font-bold">Edit</button>
                 </div>
             </div>
         </div>
@@ -77,48 +79,60 @@
 
     <div id="photoModal" class="hidden fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
         <div class="glass max-w-5xl w-full max-h-[90vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row relative">
+            
             <button onclick="closeModal()" class="absolute top-4 right-6 z-50 text-white/50 hover:text-white text-3xl">&times;</button>
             
-            <div class="flex-[2] bg-black/20 flex flex-col items-center justify-center p-4 relative">
-                <div class="absolute top-6 left-6">
-                    <span class="text-[9px] text-yellow-400 font-black uppercase tracking-widest">Uploaded By</span>
-                    <h2 id="modalUploader" class="text-xl font-black italic uppercase">---</h2>
+            <div class="flex-[2] bg-black/40 flex flex-col items-center relative overflow-hidden">
+                
+                <div class="user-frame flex items-center gap-3 z-10 backdrop-blur-md">
+                    <div class="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-black font-black text-xs">T</div>
+                    <div>
+                        <span class="text-[8px] text-yellow-400/70 font-black uppercase tracking-widest block leading-none mb-1">Uploaded By</span>
+                        <h2 id="modalUploader" class="text-lg font-black italic uppercase leading-none">---</h2>
+                    </div>
                 </div>
 
-                <button onclick="navigatePhoto(-1)" class="nav-btn absolute left-4 top-1/2 -translate-y-1/2 hidden md:flex">❮</button>
-                <button onclick="navigatePhoto(1)" class="nav-btn absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex">❯</button>
+                <button onclick="navigatePhoto(-1)" class="nav-btn absolute left-6 top-1/2 -translate-y-1/2 hidden md:flex z-20">❮</button>
+                <button onclick="navigatePhoto(1)" class="nav-btn absolute right-6 top-1/2 -translate-y-1/2 hidden md:flex z-20">❯</button>
 
-                <img id="modalImg" src="" class="max-w-full max-h-[55vh] object-contain shadow-2xl mb-6 mt-12">
-                
-                <div class="flex gap-6 items-center bg-white/5 px-6 py-3 rounded-2xl border border-white/10">
-                    <button onclick="sendReaction('❤️')" class="reaction-btn text-2xl flex flex-col items-center">❤️<span id="count-❤️" class="text-[9px] mt-1 font-bold">0</span></button>
-                    <button onclick="sendReaction('🔥')" class="reaction-btn text-2xl flex flex-col items-center">🔥<span id="count-🔥" class="text-[9px] mt-1 font-bold">0</span></button>
-                    <button onclick="sendReaction('😂')" class="reaction-btn text-2xl flex flex-col items-center">😂<span id="count-😂" class="text-[9px] mt-1 font-bold">0</span></button>
-                    <div class="w-px h-8 bg-white/10 mx-2"></div>
-                    <a id="downloadBtn" href="#" download class="text-xs font-black uppercase text-slate-400 hover:text-yellow-400">Save</a>
+                <div class="flex-1 flex items-center justify-center p-4 w-full">
+                    <img id="modalImg" src="" class="max-w-full max-h-[55vh] object-contain shadow-2xl rounded-lg">
                 </div>
                 
-                <div class="flex md:hidden gap-10 mt-4">
+                <div class="w-full flex justify-center pb-6">
+                    <div class="flex gap-6 items-center bg-white/5 px-6 py-3 rounded-2xl border border-white/10 backdrop-blur-md">
+                        <button onclick="sendReaction('❤️')" class="reaction-btn text-2xl flex flex-col items-center">❤️<span id="count-❤️" class="text-[9px] mt-1 font-bold">0</span></button>
+                        <button onclick="sendReaction('🔥')" class="reaction-btn text-2xl flex flex-col items-center">🔥<span id="count-🔥" class="text-[9px] mt-1 font-bold">0</span></button>
+                        <button onclick="sendReaction('😂')" class="reaction-btn text-2xl flex flex-col items-center">😂<span id="count-😂" class="text-[9px] mt-1 font-bold">0</span></button>
+                        <div class="w-px h-8 bg-white/10 mx-2"></div>
+                        <a id="downloadBtn" href="#" download class="text-xs font-black uppercase text-slate-400 hover:text-yellow-400">Save Photo</a>
+                    </div>
+                </div>
+                
+                <div class="flex md:hidden gap-10 pb-6">
                     <button onclick="navigatePhoto(-1)" class="nav-btn">❮</button>
                     <button onclick="navigatePhoto(1)" class="nav-btn">❯</button>
                 </div>
             </div>
 
-            <div class="flex-1 flex flex-col border-l border-white/5 p-6 bg-slate-900/50">
-                <h3 class="font-black text-[10px] text-yellow-400 uppercase mb-4">Comments</h3>
+            <div class="flex-1 flex flex-col border-l border-white/5 p-6 bg-slate-900/80">
+                <h3 class="font-black text-[10px] text-yellow-400 uppercase mb-4 tracking-widest">Live Comments</h3>
                 <div id="photoComments" class="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-4"></div>
-                <input id="pcInput" type="text" placeholder="Add a comment..." class="bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none">
+                <div class="relative">
+                    <input id="pcInput" type="text" placeholder="Add a comment..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-xs outline-none focus:border-yellow-500/50 transition-all">
+                </div>
             </div>
         </div>
     </div>
 
     <div id="uploadToast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] hidden">
-        <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
-            <div class="spinner"></div><span class="text-xs font-black text-yellow-400 uppercase tracking-widest">Uploading...</span>
+        <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3 border-yellow-500/30">
+            <div class="spinner"></div><span class="text-xs font-black text-yellow-400 uppercase tracking-widest">Uploading to Thamilan...</span>
         </div>
     </div>
 
     <script>
+        // CONFIG
         const firebaseConfig = { 
             apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
             databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
@@ -132,7 +146,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
         
-        let myName = localStorage.getItem('thamilan_name') || "User-" + Math.floor(Math.random() * 999);
+        let myName = localStorage.getItem('thamilan_name') || "Guest-" + Math.floor(Math.random() * 999);
         localStorage.setItem('thamilan_name', myName);
         document.getElementById('display-name').innerText = myName;
 
@@ -140,6 +154,7 @@
         let photoList = []; 
         let isAdmin = false;
 
+        // AUTH & INIT
         if (!albumId) {
             document.getElementById('landing-page').classList.remove('hidden');
         } else {
@@ -151,7 +166,7 @@
         }
 
         function changeName() {
-            const n = prompt("Enter your name:", myName);
+            const n = prompt("What is your name?", myName);
             if(n && n.trim().length > 1) {
                 myName = n.trim();
                 localStorage.setItem('thamilan_name', myName);
@@ -173,8 +188,14 @@
                     const data = child.val();
                     photoList.push({ id: child.key, url: data.url, user: data.user });
                     const card = document.createElement('div');
-                    card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer shadow-lg";
-                    card.innerHTML = `<img src="${data.url}" loading="lazy">${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px]">✕</button>` : ''}`;
+                    card.className = "photo-card glass hover:scale-[1.02] transition-all cursor-pointer shadow-lg group";
+                    card.innerHTML = `
+                        <img src="${data.url}" loading="lazy">
+                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                            <span class="text-[8px] font-bold uppercase text-white/70">${data.user}</span>
+                        </div>
+                        ${isAdmin ? `<button onclick="event.stopPropagation(); deletePhoto('${child.key}')" class="absolute top-2 right-2 bg-red-600 w-6 h-6 rounded-full flex items-center justify-center text-[10px]">✕</button>` : ''}
+                    `;
                     card.onclick = () => openModal(child.key, data.url, data.user);
                     view.prepend(card);
                 });
@@ -197,7 +218,7 @@
             db.ref(`comments/${albumId}/${id}`).on('value', snap => {
                 box.innerHTML = "";
                 snap.forEach(c => {
-                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl"><b class="text-yellow-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
+                    box.innerHTML += `<div class="bg-white/5 p-3 rounded-xl border border-white/5"><b class="text-yellow-400 text-[9px] block uppercase">${c.val().user}</b><p class="text-slate-200 text-sm">${c.val().text}</p></div>`;
                 });
                 box.scrollTop = box.scrollHeight;
             });
@@ -236,8 +257,8 @@
             db.ref(`comments/${albumId}/global`).limitToLast(25).on('child_added', snap => {
                 const d = snap.val();
                 const div = document.createElement('div');
-                div.className = "glass p-3 rounded-xl text-xs animate-in fade-in slide-in-from-bottom-2";
-                div.innerHTML = `<b class="text-yellow-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-2">${d.photoUrl ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg cursor-pointer object-cover" onclick="openModal('${d.photoId}', '${d.photoUrl}', '${d.user}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div>`;
+                div.className = "glass p-3 rounded-xl text-xs animate-in fade-in slide-in-from-bottom-2 border border-white/5";
+                div.innerHTML = `<b class="text-yellow-400 text-[9px] block uppercase">${d.user}</b><div class="flex gap-2 items-center">${d.photoUrl ? `<img src="${d.photoUrl}" class="w-10 h-10 rounded-lg cursor-pointer object-cover border border-white/10" onclick="openModal('${d.photoId}', '${d.photoUrl}', '${d.user}')">` : ''}<p class="text-slate-300 flex-1">${d.text}</p></div>`;
                 box.appendChild(div); box.scrollTop = box.scrollHeight;
             });
         }
@@ -265,7 +286,9 @@
             db.ref(`presence/${albumId}`).on('value', snap => {
                 document.getElementById('online-count').innerText = snap.numChildren() || 0;
                 const list = document.getElementById('user-list'); list.innerHTML = "";
-                snap.forEach(u => { list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl"><div class="w-2 h-2 rounded-full bg-green-500"></div><span class="text-[10px] font-bold uppercase">${u.val().name}</span></div>`; });
+                snap.forEach(u => { 
+                    list.innerHTML += `<div class="flex items-center gap-2 p-3 glass rounded-xl border border-white/5"><div class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]"></div><span class="text-[10px] font-bold uppercase tracking-wider">${u.val().name}</span></div>`; 
+                });
             });
         }
 
