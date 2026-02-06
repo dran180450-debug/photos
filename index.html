@@ -8,20 +8,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
-<body class="bg-slate-900 text-white font-sans">
+<body class="bg-[#0f172a] text-white font-sans min-h-screen">
 
-    <div id="app" class="max-w-4xl mx-auto p-6">
-        <header class="flex justify-between items-center mb-8 bg-slate-800 p-6 rounded-3xl shadow-xl">
-            <h1 class="text-2xl font-black italic tracking-tighter">⚡FLASHDRIVE</h1>
-            <div id="status" class="text-xs font-mono text-slate-400">CONNECTING...</div>
+    <div class="max-w-4xl mx-auto p-6">
+        <header class="flex justify-between items-center mb-8 bg-slate-800/50 backdrop-blur-md p-6 rounded-3xl border border-white/10">
+            <h1 class="text-2xl font-black italic tracking-tighter text-blue-500">⚡FLASHDRIVE</h1>
+            <div id="album-tag" class="text-[10px] font-mono bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30">INITIALIZING...</div>
         </header>
 
-        <div class="mb-10 p-10 border-2 border-dashed border-slate-700 rounded-[2.5rem] text-center hover:border-blue-500 transition-colors">
+        <div class="mb-10 p-12 border-2 border-dashed border-slate-700 rounded-[2.5rem] text-center hover:border-blue-500/50 transition-all group">
             <input type="file" id="fileInput" class="hidden" accept="image/*">
-            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 px-10 py-4 rounded-2xl font-bold shadow-lg shadow-blue-600/20 active:scale-95 transition-transform">
-                SELECT PHOTO
+            <button id="uploadBtn" onclick="document.getElementById('fileInput').click()" class="bg-blue-600 hover:bg-blue-500 px-10 py-4 rounded-2xl font-bold shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                UPLOAD TO ALBUM
             </button>
-            <p id="upText" class="mt-4 text-blue-400 font-bold hidden animate-pulse">SYNCING TO DRIVE...</p>
+            <div id="loader" class="hidden mt-6 flex flex-col items-center gap-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                <p class="text-blue-400 font-bold text-xs tracking-widest animate-pulse">SYNCING WITH GOOGLE DRIVE...</p>
+            </div>
         </div>
 
         <div id="view-feed" class="columns-2 md:columns-3 gap-4 space-y-4">
@@ -29,57 +32,72 @@
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
+        // --- YOUR CONFIGS ---
+        const firebaseConfig = { 
+           apiKey: "AIzaSyBnIdsSY3DOvz4Q8lojZqUyndpG3ldnPc8",
   authDomain: "photos-a5dfc.firebaseapp.com",
   databaseURL: "https://photos-a5dfc-default-rtdb.firebaseio.com",
   projectId: "photos-a5dfc",
   storageBucket: "photos-a5dfc.firebasestorage.app",
   messagingSenderId: "964574526842",
   appId: "1:964574526842:web:9f119aa6eebc94b0e16ac3",
-  measurementId: "G-1EQJ1D9PRR" };
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzq9XlOFIwEgt3w_9yuaeT-QYIes-c8g8C3nBwM_FVAdOLz4pVznJkgnRMGbWA9eGvy/exec";
+  measurementId: "G-1EQJ1D9PRR" 
+        };
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbw5oAvOYMQPDQNWXSCuRhXCn7ZFHWxNTRYT3H90Lvm7lP-gqT8hBggsU48Y4xEuYQSB/exec";
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const urlParams = new URLSearchParams(window.location.search);
         let albumId = urlParams.get('id');
 
-        // 1. Check/Create Album
+        // 1. ALBUM LOGIC
         if (!albumId) {
             const newId = 'alb-' + Math.random().toString(36).substr(2, 6);
             db.ref('albums/' + newId).set({ created: Date.now() }).then(() => {
                 window.location.search = '?id=' + newId;
             });
         } else {
-            document.getElementById('status').innerText = "ALBUM: " + albumId.toUpperCase();
-            loadPhotos();
+            document.getElementById('album-tag').innerText = "ID: " + albumId.toUpperCase();
+            syncGallery();
         }
 
-        // 2. Load Photos Listener
-        function loadPhotos() {
+        // 2. REALTIME GALLERY SYNC
+        function syncGallery() {
             db.ref('photos/' + albumId).on('value', snap => {
                 const view = document.getElementById('view-feed');
                 view.innerHTML = "";
+                
                 if (!snap.exists()) {
-                    view.innerHTML = "<p class='text-slate-500 text-center col-span-full py-10'>Album is empty.</p>";
+                    view.innerHTML = `<div class="col-span-full py-20 text-center text-slate-500 italic">
+                        No photos found. Be the first to upload!
+                    </div>`;
                     return;
                 }
+
                 snap.forEach(child => {
-                    const p = child.val();
-                    view.innerHTML += `
-                        <div class="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700">
-                            <img src="${p.url}" referrerpolicy="no-referrer" class="w-full h-auto block">
-                        </div>`;
+                    const data = child.val();
+                    const card = document.createElement('div');
+                    card.className = "bg-slate-800 rounded-2xl overflow-hidden border border-white/5 shadow-lg animate-in fade-in zoom-in duration-500";
+                    card.innerHTML = `
+                        <img src="${data.url}" 
+                             referrerpolicy="no-referrer" 
+                             class="w-full h-auto hover:scale-105 transition-transform duration-700 cursor-pointer"
+                             onclick="window.open('${data.url}', '_blank')">
+                        <div class="p-3 text-[9px] text-slate-500 font-bold uppercase tracking-tighter">
+                            Contributor: ${data.user}
+                        </div>
+                    `;
+                    view.appendChild(card);
                 });
             });
         }
 
-        // 3. Upload Handler
+        // 3. UPLOAD LOGIC
         document.getElementById('fileInput').onchange = async (e) => {
             const file = e.target.files[0];
             if(!file) return;
 
-            document.getElementById('upText').classList.remove('hidden');
+            document.getElementById('loader').classList.remove('hidden');
             document.getElementById('uploadBtn').classList.add('hidden');
 
             const reader = new FileReader();
@@ -87,6 +105,7 @@
             reader.onload = async () => {
                 const base64 = reader.result.split(',')[1];
                 try {
+                    // Send to Google Apps Script
                     await fetch(GAS_URL, {
                         method: 'POST',
                         mode: 'no-cors',
@@ -95,18 +114,21 @@
                             mimeType: file.type,
                             fileName: file.name,
                             albumId: albumId,
-                            userName: "User-" + Math.floor(Math.random()*999)
+                            userName: "User-" + Math.floor(Math.random() * 999)
                         })
                     });
                     
-                    // Reset UI after a delay to allow Drive to process
+                    // Reset UI after Google has had time to process
                     setTimeout(() => {
-                        document.getElementById('upText').classList.add('hidden');
+                        document.getElementById('loader').classList.add('hidden');
                         document.getElementById('uploadBtn').classList.remove('hidden');
                         document.getElementById('fileInput').value = "";
                     }, 4000);
+
                 } catch(err) {
-                    alert("Sync failed. Check GAS URL.");
+                    alert("Sync Error. Check your Script URL.");
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('uploadBtn').classList.remove('hidden');
                 }
             };
         };
